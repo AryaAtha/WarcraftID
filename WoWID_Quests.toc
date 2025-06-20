@@ -1,0 +1,16 @@
+﻿## Interface: 11500
+## Title: WoWID-Quests
+## Version: 1
+## Notes_en: AddOn displays the translated quest informations. Fully Inspired from WoWpoPolsku-Quests By Platine1 (https://wowpopolsku.pl).
+## Notes: AddOn menampilkan informasi quest yang telah diterjemahkan.
+## Author: Platine1, Sarimin
+## eMail: platine.wow@gmail.com
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## SavedVariables: QTR_PS, QTR_SAVED, QTR_MISSING, QTR_GOSSIP, QTR_CONTROL
+## SavedVariablesPerCharacter: QTR_PC
+
+QuestData_ID_classic.lua
+Gossip_ID.lua
+WoWID_Quests.lua
+WoWID_Quests.xml

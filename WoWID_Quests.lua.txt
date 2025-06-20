@@ -1,0 +1,2054 @@
+﻿-- Credit to: Platine https://wowpopolsku.pl
+
+local QTR_version = GetAddOnMetadata("WoWID_Quests", "Version");
+local QTR_onDebug = false;      
+local QTR_name = UnitName("player");
+local QTR_class= UnitClass("player");
+local QTR_race = UnitRace("player");
+local QTR_sex = UnitSex("player");     
+local QTR_waitTable = {};
+local QTR_waitFrame = nil;
+local QTR_MessOrig = {
+      details    = "Description", 
+      objectives = "Objectives", 
+      rewards    = "Rewards", 
+      itemchoose1= "You will be able to choose one of these rewards:", 
+      itemchoose2= "Choose one of these rewards:", 
+      itemreceiv1= "You will also receive:", 
+      itemreceiv2= "You receiving the reward:", 
+      learnspell = "Learn Spell:", 
+      reqmoney   = "Required Money:", 
+      reqitems   = "Required items:", 
+      experience = "Experience:", 
+      currquests = "Current Quests", 
+      avaiquests = "Available Quests", };
+local QTR_quest_EN = {
+      id = 0,
+      title = "",
+      details = "",
+      objectives = "",
+      progress = "",
+      completion = "",
+      itemchoose = "",
+      itemreceive = "", };      
+local QTR_quest_LG = {
+      id = 0,
+      title = "",
+      details = "",
+      objectives = "",
+      progress = "",
+      completion = "",
+      itemchoose = "",
+      itemreceive = "", };      
+local QTR_Reklama = {
+      ON = "Iklankan addon di chat kanal nomor:",
+      PERIOD = "Jeda waktu antara setiap iklan:",
+      CHOICE = "Teks mana yang ingin ditampilkan? (jika keduanya dicentang, akan bergantian):",
+      OTHER1 = "penerjemah di addon ClassicQuestLog ",
+      OTHER2 = "penerjemah di addon Immersion ",
+      OTHER3 = "penerjemah di addon Storyline ",
+      ACTIV1 = "(aktif)",
+      ACTIV2 = "(tidak aktif)",
+      WWW1  = "Kunjungi situs web addon:",
+      WWW2  = "https://warcraftid.id",
+      WWW3  = "klik dan tekan Ctrl+C untuk menyalin ke clipboard",
+      TEXT1 = "WoWID-Quests - addon yang menampilkan quest terjemahan (WoWID.id)",
+      TEXT2 = "WoWID-Quests - addon yang menampilkan quest dalam bahasa indonesia (WoWID.id)",};
+local last_time = GetTime();
+local last_text = 0;
+local curr_trans = "1";
+local curr_goss = "X";
+local curr_hash = 0;
+local QTR_first_show = 0;
+local Original_Font1 = "Fonts\\MORPHEUS.ttf";
+local Original_Font2 = "Fonts\\FRIZQT__.ttf";
+local p_race = {
+    ["Blood Elf"] = { M1="Blood Elf", D1="blood elf", C1="Ke blood elf", B1="blood elf", N1="sebagai blood elf", K1="di blood elf", W1="Blood Elf" },
+    ["Dark Iron Dwarf"] = { M1="Dark Iron Dwarf", D1="dark iron dwarf", C1="Ke dark iron dwarf", B1="dark iron dwarf", N1="sebagai dark iron dwarf", K1="di dark iron dwarf", W1="Dark Iron Dwarf" },
+    ["Draenei"] = { M1="Draenei", D1="draenei", C1="Ke draenei", B1="draenei", N1="sebagai draenei", K1="di draenei", W1="Draenei" },
+    ["Dwarf"] = { M1="Dwarf", D1="dwarf", C1="Ke dwarf", B1="dwarf", N1="sebagai dwarf", K1="di dwarf", W1="Dwarf" },
+    ["Gnome"] = { M1="Gnome", D1="gnome", C1="Ke gnome", B1="gnome", N1="sebagai gnome", K1="di gnome", W1="Gnome" },
+    ["Goblin"] = { M1="Goblin", D1="goblin", C1="Ke goblin", B1="goblin", N1="sebagai goblin", K1="in goblin", W1="Goblin" },
+    ["Highmountain Tauren"] = { M1="Highmountain Tauren", D1="highmountain tauren", C1="Ke highmountain tauren", B1="highmountain tauren", N1="sebagai highmountain tauren", K1="di highmountain tauren", W1="Highmountain Tauren" },
+    ["Human"] = { M1="Human", D1="human", C1="Ke human", B1="human", N1="sebagai human", K1="in human", W1="Human" },
+    ["Kul Tiran"] = { M1="Kul Tiran", D1="Kul Tiran", C1="Ke Kul Tiran", B1="Kul Tiran", N1="sebagai Kul Tiran", K1="di Kul Tiran", W1="Kul Tiran" },
+    ["Lightforged Draenei"] = { M1="Lightforged Draenei", D1="lightforged draenei", C1="Ke lightforged draenei", B1="lightforged draenei", N1="sebagai lightforged draenei", K1="di lightforged draenei", W1="Lightforged Draenei" },
+    ["Mag'har Orc"] = { M1="Mag'har Orc", D1="Mag'har orc", C1="Ke Mag'har orc", B1="Mag'har orc", N1="sebagai Mag'har orc", K1="di Mag'har orc", W1="Mag'har Orc" },
+    ["Nightborne"] = { M1="Nightborne", D1="nightborne", C1="Ke nightborne", B1="nightborne", N1="sebagai nightborne", K1="di nightborne", W1="Nightborne" },
+    ["Night Elf"] = { M1="Night Elf", D1="night elf", C1="Ke night elf", B1="night elf", N1="sebagai night elf", K1="di night elf", W1="Night Elf" },
+    ["Orc"] = { M1="Orc", D1="orc", C1="Ke orc", B1="orc", N1="sebagai orc", K1="di orc", W1="Orc" },
+    ["Pandaren"] = { M1="Pandaren", D1="pandaren", C1="Ke pandaren", B1="pandaren", N1="sebagai pandaren", K1="di pandaren", W1="Pandaren" },
+    ["Tauren"] = { M1="Tauren", D1="tauren", C1="Ke tauren", B1="tauren", N1="sebagai tauren", K1="di tauren", W1="Tauren" },
+    ["Troll"] = { M1="Troll", D1="troll", C1="Ke troll", B1="troll", N1="sebagai troll", K1="di troll", W1="Troll" },
+    ["Undead"] = { M1="Undead", D1="undead", C1="Ke undead", B1="undead", N1="sebagai undead", K1="di undead", W1="Undead" },
+    ["Void Elf"] = { M1="Void Elf", D1="void elf", C1="Ke void elf", B1="void elf", N1="sebagai void elf", K1="di void elf", W1="Void Elf" },
+    ["Worgen"] = { M1="Worgen", D1="worgen", C1="Ke worgen", B1="worgen", N1="sebagai worgen", K1="in worgen", W1="Worgen" },
+  ["Zandalari Troll"] = { M1="Zandalari Troll", D1="Zandalari troll", C1="Ke Zandalari troll", B1="Zandalari troll", N1="sebagai Zandalari troll", K1="di Zandalari troll", W1="Zandalari Troll" }, }
+local p_class = {
+   ["Death Knight"]={M1="Death Knight",D1="Death Knight",C1="kepada Death Knight",B1="Death Knight",N1="sebagai Death Knight",K1="di Death Knight",W1="Death Knight",M2="Death Knight",D2="Death Knight",C2="kepada Death Knight",B2="Death Knight",N2="sebagai Death Knight",K2="di Death Knight",W2="Death Knight"},
+   ["Demon Hunter"]={M1="Demon Hunter",D1="Demon Hunter",C1="kepada Demon Hunter",B1="Demon Hunter",N1="sebagai Demon Hunter",K1="di Demon Hunter",W1="Demon Hunter",M2="Demon Hunter",D2="Demon Hunter",C2="kepada Demon Hunter",B2="Demon Hunter",N2="sebagai Demon Hunter",K2="di Demon Hunter",W2="Demon Hunter"},
+   ["Druid"]={M1="Druid",D1="Druid",C1="kepada Druid",B1="Druid",N1="sebagai Druid",K1="di Druid",W1="Druid",M2="Druid",D2="Druid",C2="kepada Druid",B2="Druid",N2="sebagai Druid",K2="di Druid",W2="Druid"},
+   ["Hunter"]={M1="Hunter",D1="Hunter",C1="kepada Hunter",B1="Hunter",N1="sebagai Hunter",K1="di Hunter",W1="Hunter",M2="Hunter",D2="Hunter",C2="kepada Hunter",B2="Hunter",N2="sebagai Hunter",K2="di Hunter",W2="Hunter"},
+   ["Mage"]={M1="Mage",D1="Mage",C1="kepada Mage",B1="Mage",N1="sebagai Mage",K1="di Mage",W1="Mage",M2="Mage",D2="Mage",C2="kepada Mage",B2="Mage",N2="sebagai Mage",K2="di Mage",W2="Mage"},
+   ["Monk"]={M1="Monk",D1="Monk",C1="kepada Monk",B1="Monk",N1="sebagai Monk",K1="di Monk",W1="Monk",M2="Monk",D2="Monk",C2="kepada Monk",B2="Monk",N2="sebagai Monk",K2="di Monk",W2="Monk"},
+   ["Paladin"]={M1="Paladin",D1="Paladin",C1="kepada Paladin",B1="Paladin",N1="sebagai Paladin",K1="di Paladin",W1="Paladin",M2="Paladin",D2="Paladin",C2="kepada Paladin",B2="Paladin",N2="sebagai Paladin",K2="di Paladin",W2="Paladin"},
+   ["Priest"]={M1="Priest",D1="Priest",C1="kepada Priest",B1="Priest",N1="sebagai Priest",K1="di Priest",W1="Priest",M2="Priest",D2="Priest",C2="kepada Priest",B2="Priest",N2="sebagai Priest",K2="di Priest",W2="Priest"},
+   ["Rogue"]={M1="Rogue",D1="Rogue",C1="kepada Rogue",B1="Rogue",N1="sebagai Rogue",K1="di Rogue",W1="Rogue",M2="Rogue",D2="Rogue",C2="kepada Rogue",B2="Rogue",N2="sebagai Rogue",K2="di Rogue",W2="Rogue"},
+   ["Shaman"]={M1="Shaman",D1="Shaman",C1="kepada Shaman",B1="Shaman",N1="sebagai Shaman",K1="di Shaman",W1="Shaman",M2="Shaman",D2="Shaman",C2="kepada Shaman",B2="Shaman",N2="sebagai Shaman",K2="di Shaman",W2="Shaman"},
+   ["Warlock"]={M1="Warlock",D1="Warlock",C1="kepada Warlock",B1="Warlock",N1="sebagai Warlock",K1="di Warlock",W1="Warlock",M2="Warlock",D2="Warlock",C2="kepada Warlock",B2="Warlock",N2="sebagai Warlock",K2="di Warlock",W2="Warlock"},
+   ["Warrior"]={M1="Warrior",D1="Warrior",C1="kepada Warrior",B1="Warrior",N1="sebagai Warrior",K1="di Warrior",W1="Warrior",M2="Warrior",D2="Warrior",C2="kepada Warrior",B2="Warrior",N2="sebagai Warrior",K2="di Warrior",W2="Warrior"},}
+if (p_race[QTR_race]) then      
+   player_race = { M1=p_race[QTR_race].M1, D1=p_race[QTR_race].D1, C1=p_race[QTR_race].C1, B1=p_race[QTR_race].B1, N1=p_race[QTR_race].N1, K1=p_race[QTR_race].K1, W1=p_race[QTR_race].W1, M2=p_race[QTR_race].M2, D2=p_race[QTR_race].D2, C2=p_race[QTR_race].C2, B2=p_race[QTR_race].B2, N2=p_race[QTR_race].N2, K2=p_race[QTR_race].K2, W2=p_race[QTR_race].W2 };
+else   
+   player_race = { M1=QTR_race, D1=QTR_race, C1=QTR_race, B1=QTR_race, N1=QTR_race, K1=QTR_race, W1=QTR_race, M2=QTR_race, D2=QTR_race, C2=QTR_race, B2=QTR_race, N2=QTR_race, K2=QTR_race, W2=QTR_race };
+   print ("|cff55ff00QTR - Ras Baru: "..QTR_race);
+end
+if (p_class[QTR_class]) then
+   player_class = { M1=p_class[QTR_class].M1, D1=p_class[QTR_class].D1, C1=p_class[QTR_class].C1, B1=p_class[QTR_class].B1, N1=p_class[QTR_class].N1, K1=p_class[QTR_class].K1, W1=p_class[QTR_class].W1, M2=p_class[QTR_class].M2, D2=p_class[QTR_class].D2, C2=p_class[QTR_class].C2, B2=p_class[QTR_class].B2, N2=p_class[QTR_class].N2, K2=p_class[QTR_class].K2, W2=p_class[QTR_class].W2 };
+else
+   player_class = { M1=QTR_class, D1=QTR_class, C1=QTR_class, B1=QTR_class, N1=QTR_class, K1=QTR_class, W1=QTR_class, M2=QTR_class, D2=QTR_class, C2=QTR_class, B2=QTR_class, N2=QTR_class, K2=QTR_class, W2=QTR_class };
+   print ("|cff55ff00QTR - Class Baru: "..QTR_class);
+end
+
+
+
+function Spr_Gender(msg)
+   local nr_1, nr_2, nr_3 = 0;
+   local QTR_forma = "";
+   local nr_poz = string.find(msg, "YOUR_GENDER");    -- Ketika dia tidak menemukan, ada: Nil;Itu berasal dari 1
+   while (nr_poz and nr_poz>0) do
+      nr_1 = nr_poz + 1;   
+      while (string.sub(msg, nr_1, nr_1) ~= "(") do   -- mencari tanda kurung pembukaan
+         nr_1 = nr_1 + 1;
+      end
+      if (string.sub(msg, nr_1, nr_1) == "(") then
+         nr_2 =  nr_1 + 1;
+         while (string.sub(msg, nr_2, nr_2) ~= ";") do   -- Cari Pemilih
+            nr_2 = nr_2 + 1;
+         end
+         if (string.sub(msg, nr_2, nr_2) == ";") then
+            nr_3 = nr_2 + 1;
+            while (string.sub(msg, nr_3, nr_3) ~= ")") do   -- Cari kurung penutupan
+               nr_3 = nr_3 + 1;
+            end
+            if (string.sub(msg, nr_3, nr_3) == ")") then
+               if (QTR_sex==3) then        -- bentuk wanita
+                  QTR_forma = string.sub(msg,nr_2+1,nr_3-1);
+               else                        -- pria
+                  QTR_forma = string.sub(msg,nr_1+1,nr_2-1);
+               end
+               msg = string.sub(msg,1,nr_poz-1) .. QTR_forma .. string.sub(msg,nr_3+1);
+            end   
+         end
+      end
+      nr_poz = string.find(msg, "YOUR_GENDER");
+   end
+   return msg;
+end
+
+
+local function StringHash(text)           -- Fungsi hash (32-bit number) dari teks yang diberikan
+  local counter = 1;
+  local pomoc = 0;
+  local dlug = string.len(text);
+  for i = 1, dlug, 3 do 
+    counter = math.fmod(counter*8161, 4294967279);  -- 2^32 - 17: Prime!
+    pomoc = (string.byte(text,i)*16776193);
+    counter = counter + pomoc;
+    pomoc = ((string.byte(text,i+1) or (dlug-i+256))*8372226);
+    counter = counter + pomoc;
+    pomoc = ((string.byte(text,i+2) or (dlug-i+256))*3932164);
+    counter = counter + pomoc;
+  end
+  return math.fmod(counter, 4294967291) -- 2^32 - 5: Prime (dan berbeda dari prime di loop)
+end
+
+
+--Variabel program disimpan secara permanen di komputer
+function QTR_CheckVars()
+  if (not QTR_PS) then
+     QTR_PS = {};
+  end
+  if (not QTR_SAVED) then
+     QTR_SAVED = {};
+  end
+  if (not QTR_MISSING) then
+     QTR_MISSING = {};
+  end
+  if (not QTR_GOSSIP) then
+     QTR_GOSSIP = {};
+  end
+  if (not QTR_CONTROL) then
+     QTR_CONTROL = {};
+  end
+  -- Inisialisasi: Terjemahan diaktifkan
+  if (not QTR_PS["active"]) then
+     QTR_PS["active"] = "1";
+  end
+  -- Inisialisasi: terjemahan judul pencarian diaktifkan
+  if (not QTR_PS["transtitle"] ) then
+     QTR_PS["transtitle"] = "0";   
+  end
+  -- Ketersediaan khusus fungsi getQuestId
+  if ( QTR_PS["isGetQuestID"] ) then
+     isGetQuestID=QTR_PS["isGetQuestID"];
+  end;
+  -- Tampilan Iklan Berkala dengan Tunjangan
+  if (not QTR_PS["reklama"] ) then
+     QTR_PS["reklama"] = "0";
+     QTR_PS["period"] = 20;
+     QTR_PS["text1"] = "0";
+     QTR_PS["text2"] = "1";
+     QTR_PS["channel"] = "0";
+  end;
+  if (not QTR_PS["other1"] ) then
+     QTR_PS["other1"] = "1";
+  end;
+  if (not QTR_PS["other2"] ) then
+     QTR_PS["other2"] = "1";
+  end;
+  if (not QTR_PS["other3"] ) then
+     QTR_PS["other3"] = "1";
+  end;
+  if (not QTR_PS["channel"] ) then
+     QTR_PS["channel"] = "0";
+  end;
+   -- Kontrol Catatan dari EN Quest Asli
+  if (not QTR_PS["control"]) then
+     QTR_PS["control"] = "1";
+  end
+   - Versi Wow Patch
+  if (not QTR_PS["patch"]) then
+     QTR_PS["patch"] = GetBuildInfo();
+  end
+ -- Nama lain dari pemain di wypadki / per karakter
+  if (not QTR_PC) then
+     QTR_PC = {};
+  end
+  if (not QTR_PC["name1"] ) then
+     QTR_PC["name1"] = QTR_name;
+  end;
+  if (not QTR_PC["name2"] ) then
+     QTR_PC["name2"] = QTR_name.."";
+  end;
+  if (not QTR_PC["name3"] ) then
+     QTR_PC["name3"] = QTR_name.."";
+  end;
+  if (not QTR_PC["name4"] ) then
+     QTR_PC["name4"] = QTR_name.."";
+  end;
+  if (not QTR_PC["name5"] ) then
+     QTR_PC["name5"] = QTR_name.."";
+  end;
+  if (not QTR_PC["name6"] ) then
+     QTR_PC["name6"] = QTR_name.."";
+  end;
+  if (not QTR_PC["name7"] ) then
+     QTR_PC["name7"] = QTR_name;
+  end;
+  QTR_GS = {};       -- Papan untuk teks asli
+end
+
+
+-- Memeriksa ketersediaan fungsi khusus WoW: getQuestId ()
+function DetectEmuServer()
+  QTR_PS["isGetQuestID"]="0";
+  isGetQuestID="0";
+  -- Fungsi getQuestId () hanya ditemukan di server Blizzard asli
+  if ( GetQuestID() ) then
+     QTR_PS["isGetQuestID"]="1";
+     isGetQuestID="1";
+  end
+end
+
+-- Layanan Perintah Slash
+function QTR_SlashCommand(msg)
+   if (msg=="on" or msg=="ON") then
+      if (QTR_PS["active"]=="1") then
+         print ("QTR - Terjemahan dihidupkan.");
+      else
+         print ("|cffffff00QTR - Saya menyalakan terjemahannya.");
+         QTR_PS["active"] = "1";
+         QTR_ToggleButton0:Enable();
+         QTR_ToggleButton1:Enable();
+         QTR_ToggleButton2:Enable();
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:Enable();
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:Enable();
+         end
+         QTR_Translate_On(1);
+      end
+   elseif (msg=="off" or msg=="OFF") then
+      if (QTR_PS["active"]=="0") then
+         print ("QTR - Terjemahan dimatikan.");
+      else
+         print ("|cffffff00QTR - Saya mematikan terjemahan.");
+         QTR_PS["active"] = "0";
+         QTR_ToggleButton0:Disable();
+         QTR_ToggleButton1:Disable();
+         QTR_ToggleButton2:Disable();
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:Disable();
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:Disable();
+         end
+         QTR_Translate_Off(1);
+      end
+   elseif (msg=="title on" or msg=="TITLE ON" or msg=="title 1") then
+      if (QTR_PS["transtilte"]=="1") then
+         print ("QTR - penerjemahan judul diaktifkan.");
+      else
+         print ("|cffffff00QTR - saya mengaktifkan penerjemahan judul.");
+         QTR_PS["transtitle"] = "1";
+         QuestInfoTitleHeader:SetFont(QTR_Font1, 18);
+      end
+   elseif (msg=="title off" or msg=="TITLE OFF" or msg=="title 0") then
+      if (QTR_PS["transtilte"]=="0") then
+         print ("QTR - penerjemahan judul dinonaktifkan.");
+      else
+         print ("|cffffff00QTR - saya menonaktifkan penerjemahan judul.");
+         QTR_PS["transtitle"] = "0";
+         QuestInfoTitleHeader:SetFont(Original_Font1, 18);
+      end
+   elseif (msg=="title" or msg=="TITLE") then
+      if (QTR_PS["transtilte"]=="1") then
+         print ("QTR - penerjemahan judul diaktifkan.");
+      else
+         print ("QTR - penerjemahan judul dinonaktifkan.");
+      end
+   elseif (msg=="") then
+      InterfaceOptionsFrame_Show();
+      InterfaceOptionsFrame_OpenToCategory("WoWID-Quests");
+   else
+      print ("QTR - menu perintah cepat addon:");
+      print ("      /qtr on  - mengaktifkan terjemahan");
+      print ("      /qtr off - menonaktifkan terjemahan");
+      print ("      /qtr title on  - mengaktifkan penerjemahan judul");
+      print ("      /qtr title off - menonaktifkan penerjemahan judul");
+   end
+   if (QTR_PS["reklama"]=="1") then
+      QTR_SendReklama();
+   end
+end
+
+
+
+function QTR_SetCheckButtonState()
+  QTRCheckButton0:SetChecked(QTR_PS["active"]=="1");
+  QTRCheckButton3:SetChecked(QTR_PS["transtitle"]=="1");
+  QTRCheckButton5:SetChecked(QTR_PS["reklama"]=="1");
+  QTRCheckText1:SetChecked(QTR_PS["text1"]=="1");
+  QTRCheckText2:SetChecked(QTR_PS["text2"]=="1");
+  QTRCheckOther1:SetChecked(QTR_PS["other1"]=="1");
+  QTRCheckOther2:SetChecked(QTR_PS["other2"]=="1");
+  QTRCheckOther3:SetChecked(QTR_PS["other3"]=="1");
+  QTREditBox:SetText(QTR_PS["channel"]);
+  QTREditP1:SetText(QTR_PC["name1"]);
+  QTREditP2:SetText(QTR_PC["name2"]);
+  QTREditP3:SetText(QTR_PC["name3"]);
+  QTREditP4:SetText(QTR_PC["name4"]);
+  QTREditP5:SetText(QTR_PC["name5"]);
+  QTREditP6:SetText(QTR_PC["name6"]);
+  QTREditP7:SetText(QTR_PC["name7"]);
+end
+
+
+
+function QTR_BlizzardOptions()
+  -- Create main frame for information text
+  local QTROptions = CreateFrame("FRAME", "WoWID_Quests_Options");
+  QTROptions.name = "WoWID-Quests";
+  QTROptions.refresh = function (self) QTR_SetCheckButtonState() end;
+	if InterfaceOptions_AddCategory then
+		InterfaceOptions_AddCategory(QTROptions)
+	else
+		local category, layout = _G.Settings.RegisterCanvasLayoutCategory(QTROptions, QTROptions.name)
+		_G.Settings.RegisterAddOnCategory(category)
+	end
+
+  local QTROptionsHeader = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTROptionsHeader:SetFontObject(GameFontNormalLarge);
+  QTROptionsHeader:SetJustifyH("LEFT"); 
+  QTROptionsHeader:SetJustifyV("TOP");
+  QTROptionsHeader:ClearAllPoints();
+  QTROptionsHeader:SetPoint("TOPLEFT", 16, -16);
+  QTROptionsHeader:SetText("WoWID-Quests, ver. "..QTR_version.." ("..QTR_base..") by Platine © 2010-2018");
+
+  local QTRDateOfBase = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRDateOfBase:SetFontObject(GameFontNormalLarge);
+  QTRDateOfBase:SetJustifyH("LEFT"); 
+  QTRDateOfBase:SetJustifyV("TOP");
+  QTRDateOfBase:ClearAllPoints();
+  QTRDateOfBase:SetPoint("TOPRIGHT", QTROptionsHeader, "TOPRIGHT", 0, -22);
+  QTRDateOfBase:SetText("Data bazy tłumaczeń: "..QTR_date);
+  QTRDateOfBase:SetFont(QTR_Font2, 16);
+
+  local QTRCheckButton0 = CreateFrame("CheckButton", "QTRCheckButton0", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckButton0:SetPoint("TOPLEFT", QTROptionsHeader, "BOTTOMLEFT", 0, -20);
+  QTRCheckButton0:SetScript("OnClick", function(self) if (QTR_PS["active"]=="1") then QTR_PS["active"]="0" else QTR_PS["active"]="1" end; end);
+  QTRCheckButton0Text:SetFont(QTR_Font2, 13);
+  QTRCheckButton0Text:SetText(QTR_Interface.active);
+
+  local QTROptionsMode1 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTROptionsMode1:SetFontObject(GameFontWhite);
+  QTROptionsMode1:SetJustifyH("LEFT");
+  QTROptionsMode1:SetJustifyV("TOP");
+  QTROptionsMode1:ClearAllPoints();
+  QTROptionsMode1:SetPoint("TOPLEFT", QTRCheckButton0, "BOTTOMLEFT", 30, -20);
+  QTROptionsMode1:SetFont(QTR_Font2, 13);
+  QTROptionsMode1:SetText(QTR_Interface.options1);
+  
+  local QTRCheckButton3 = CreateFrame("CheckButton", "QTRCheckButton3", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckButton3:SetPoint("TOPLEFT", QTROptionsMode1, "BOTTOMLEFT", 0, -5);
+  QTRCheckButton3:SetScript("OnClick", function(self) if (QTR_PS["transtitle"]=="0") then QTR_PS["transtitle"]="1" else QTR_PS["transtitle"]="0" end; end);
+  QTRCheckButton3Text:SetFont(QTR_Font2, 13);
+  QTRCheckButton3Text:SetText(QTR_Interface.transtitle);
+
+  local QTROptionsMode2 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTROptionsMode2:SetFontObject(GameFontWhite);
+  QTROptionsMode2:SetJustifyH("LEFT");
+  QTROptionsMode2:SetJustifyV("TOP");
+  QTROptionsMode2:ClearAllPoints();
+  QTROptionsMode2:SetPoint("TOPLEFT", QTROptionsMode1, "TOPRIGHT", 70, 0);
+  QTROptionsMode2:SetFont(QTR_Font2, 13);
+  QTROptionsMode2:SetText("Nazwa gracza w różnych przypadkach:");
+  
+  local QTREditP1 = CreateFrame("EditBox", "QTREditP1", QTROptions, "InputBoxTemplate");
+  QTREditP1:SetPoint("TOPRIGHT", QTROptionsMode2, "BOTTOMRIGHT", 0, -10);
+  QTREditP1:SetHeight(20);
+  QTREditP1:SetWidth(100);
+  QTREditP1:SetAutoFocus(false);
+  QTREditP1:SetText(QTR_PC["name1"]);
+  QTREditP1:SetCursorPosition(0);
+  QTREditP1:SetScript("OnTextChanged", function(self) if (strlen(QTREditP1:GetText())>0) then QTR_PC["name1"]=QTREditP1:GetText() end; end);
+
+  local QTRName1 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName1:SetFontObject(GameFontNormalLarge);
+  QTRName1:SetJustifyH("LEFT"); 
+  QTRName1:SetJustifyV("TOP");
+  QTRName1:ClearAllPoints();
+  QTRName1:SetPoint("TOPRIGHT", QTREditP1, "TOPLEFT", -8, -4);
+  QTRName1:SetText("Mianownik:");
+  QTRName1:SetFont(QTR_Font2, 13);
+
+  local QTREditP2 = CreateFrame("EditBox", "QTREditP2", QTROptions, "InputBoxTemplate");
+  QTREditP2:SetPoint("TOPRIGHT", QTREditP1, "BOTTOMRIGHT", 0, 0);
+  QTREditP2:SetHeight(20);
+  QTREditP2:SetWidth(100);
+  QTREditP2:SetAutoFocus(false);
+  QTREditP2:SetText(QTR_PC["name2"]);
+  QTREditP2:SetCursorPosition(0);
+  QTREditP2:SetScript("OnTextChanged", function(self) if (strlen(QTREditP2:GetText())>0) then QTR_PC["name2"]=QTREditP2:GetText() end; end);
+
+  local QTRName2 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName2:SetFontObject(GameFontNormalLarge);
+  QTRName2:SetJustifyH("LEFT"); 
+  QTRName2:SetJustifyV("TOP");
+  QTRName2:ClearAllPoints();
+  QTRName2:SetPoint("TOPRIGHT", QTREditP2, "TOPLEFT", -8, -4);
+  QTRName2:SetText("Dopełniacz:");
+  QTRName2:SetFont(QTR_Font2, 13);
+
+  local QTREditP3 = CreateFrame("EditBox", "QTREditP3", QTROptions, "InputBoxTemplate");
+  QTREditP3:SetPoint("TOPRIGHT", QTREditP2, "BOTTOMRIGHT", 0, 0);
+  QTREditP3:SetHeight(20);
+  QTREditP3:SetWidth(100);
+  QTREditP3:SetAutoFocus(false);
+  QTREditP3:SetText(QTR_PC["name3"]);
+  QTREditP3:SetCursorPosition(0);
+  QTREditP3:SetScript("OnTextChanged", function(self) if (strlen(QTREditP3:GetText())>0) then QTR_PC["name3"]=QTREditP3:GetText() end; end);
+
+  local QTRName3 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName3:SetFontObject(GameFontNormalLarge);
+  QTRName3:SetJustifyH("LEFT"); 
+  QTRName3:SetJustifyV("TOP");
+  QTRName3:ClearAllPoints();
+  QTRName3:SetPoint("TOPRIGHT", QTREditP3, "TOPLEFT", -8, -4);
+  QTRName3:SetText("Celownik:");
+  QTRName3:SetFont(QTR_Font2, 13);
+
+  local QTREditP4 = CreateFrame("EditBox", "QTREditP4", QTROptions, "InputBoxTemplate");
+  QTREditP4:SetPoint("TOPRIGHT", QTREditP3, "BOTTOMRIGHT", 0, 0);
+  QTREditP4:SetHeight(20);
+  QTREditP4:SetWidth(100);
+  QTREditP4:SetAutoFocus(false);
+  QTREditP4:SetText(QTR_PC["name4"]);
+  QTREditP4:SetCursorPosition(0);
+  QTREditP4:SetScript("OnTextChanged", function(self) if (strlen(QTREditP4:GetText())>0) then QTR_PC["name4"]=QTREditP4:GetText() end; end);
+
+  local QTRName4 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName4:SetFontObject(GameFontNormalLarge);
+  QTRName4:SetJustifyH("LEFT"); 
+  QTRName4:SetJustifyV("TOP");
+  QTRName4:ClearAllPoints();
+  QTRName4:SetPoint("TOPRIGHT", QTREditP4, "TOPLEFT", -8, -4);
+  QTRName4:SetText("Biernik:");
+  QTRName4:SetFont(QTR_Font2, 13);
+
+  local QTREditP5 = CreateFrame("EditBox", "QTREditP5", QTROptions, "InputBoxTemplate");
+  QTREditP5:SetPoint("TOPRIGHT", QTREditP4, "BOTTOMRIGHT", 0, 0);
+  QTREditP5:SetHeight(20);
+  QTREditP5:SetWidth(100);
+  QTREditP5:SetAutoFocus(false);
+  QTREditP5:SetText(QTR_PC["name5"]);
+  QTREditP5:SetCursorPosition(0);
+  QTREditP5:SetScript("OnTextChanged", function(self) if (strlen(QTREditP5:GetText())>0) then QTR_PC["name5"]=QTREditP5:GetText() end; end);
+
+  local QTRName5 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName5:SetFontObject(GameFontNormalLarge);
+  QTRName5:SetJustifyH("LEFT"); 
+  QTRName5:SetJustifyV("TOP");
+  QTRName5:ClearAllPoints();
+  QTRName5:SetPoint("TOPRIGHT", QTREditP5, "TOPLEFT", -8, -4);
+  QTRName5:SetText("Narzędnik:");
+  QTRName5:SetFont(QTR_Font2, 13);
+
+  local QTREditP6 = CreateFrame("EditBox", "QTREditP6", QTROptions, "InputBoxTemplate");
+  QTREditP6:SetPoint("TOPRIGHT", QTREditP5, "BOTTOMRIGHT", 0, 0);
+  QTREditP6:SetHeight(20);
+  QTREditP6:SetWidth(100);
+  QTREditP6:SetAutoFocus(false);
+  QTREditP6:SetText(QTR_PC["name6"]);
+  QTREditP6:SetCursorPosition(0);
+  QTREditP6:SetScript("OnTextChanged", function(self) if (strlen(QTREditP6:GetText())>0) then QTR_PC["name6"]=QTREditP6:GetText() end; end);
+
+  local QTRName6 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName6:SetFontObject(GameFontNormalLarge);
+  QTRName6:SetJustifyH("LEFT"); 
+  QTRName6:SetJustifyV("TOP");
+  QTRName6:ClearAllPoints();
+  QTRName6:SetPoint("TOPRIGHT", QTREditP6, "TOPLEFT", -8, -4);
+  QTRName6:SetText("Miejscownik:");
+  QTRName6:SetFont(QTR_Font2, 13);
+
+  local QTREditP7 = CreateFrame("EditBox", "QTREditP7", QTROptions, "InputBoxTemplate");
+  QTREditP7:SetPoint("TOPRIGHT", QTREditP6, "BOTTOMRIGHT", 0, 0);
+  QTREditP7:SetHeight(20);
+  QTREditP7:SetWidth(100);
+  QTREditP7:SetAutoFocus(false);
+  QTREditP7:SetText(QTR_PC["name7"]);
+  QTREditP7:SetCursorPosition(0);
+  QTREditP7:SetScript("OnTextChanged", function(self) if (strlen(QTREditP7:GetText())>0) then QTR_PC["name7"]=QTREditP7:GetText() end; end);
+
+  local QTRName7 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRName7:SetFontObject(GameFontNormalLarge);
+  QTRName7:SetJustifyH("LEFT"); 
+  QTRName7:SetJustifyV("TOP");
+  QTRName7:ClearAllPoints();
+  QTRName7:SetPoint("TOPRIGHT", QTREditP7, "TOPLEFT", -8, -4);
+  QTRName7:SetText("Wołacz:");
+  QTRName7:SetFont(QTR_Font2, 13);
+
+  local QTRCheckButton5 = CreateFrame("CheckButton", "QTRCheckButton5", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckButton5:SetPoint("TOPLEFT", QTRCheckButton3, "BOTTOMLEFT", 0, -20);
+  QTRCheckButton5:SetScript("OnClick", function(self) if (QTR_PS["reklama"]=="0") then QTR_PS["reklama"]="1" else QTR_PS["reklama"]="0" end; end);
+  QTRCheckButton5Text:SetFont(QTR_Font2, 13);
+  QTRCheckButton5Text:SetText(QTR_Reklama.ON);
+
+  local QTREditBox = CreateFrame("EditBox", "QTREditBox", QTROptions, "InputBoxTemplate");
+  QTREditBox:SetPoint("TOPLEFT", QTRCheckButton5Text, "TOPRIGHT", 10, 3);
+  QTREditBox:SetHeight(20);
+  QTREditBox:SetWidth(20);
+  QTREditBox:SetAutoFocus(false);
+  QTREditBox:SetText(QTR_PS["channel"]);
+  QTREditBox:SetCursorPosition(0);
+  QTREditBox:SetScript("OnTextChanged", function(self) if (strlen(QTREditBox:GetText())>0) then QTR_PS["channel"]=QTREditBox:GetText() end; end);
+
+--  local QTRChannelsFrame = CreateFrame("frame", "QTRChannelsFrame", QTROptions, "UIDropDownMenuTemplate")
+--  QTRChannelsFrame:SetPoint("TOPLEFT", QTREditBox, "BOTTOMRIGHT", -150, 0);
+--  UIDropDownMenu_SetText(QTRChannelsFrame, "Dostepne kanały:");
+--  QTRChannelsFrame.onClick = function(self, arg1, arg2, checked) QTREditBox:SetText(arg1); end
+--  QTRChannelsFrame.initialize = function(self, level)
+--	  local info = UIDropDownMenu_CreateInfo();
+--     info.text = "0: LocalArea SAY";
+--     info.value= "0";
+--     info.func = self.onClick;
+--     info.arg1 = "0";
+--     info.arg2 = "LocalArea SAY";
+--     UIDropDownMenu_AddButton(info, level);
+--     local ind1 = "0";
+--     for ind,nam in ipairs({GetChannelList()}) do
+--        if nam and (strlen(nam)==1) then
+--           ind1 = nam;      -- channel number     
+--        else
+--           info.text = ind1 .. ": " .. nam;        -- nam wychodzi jako BOOLEAN
+--           info.value= ind1;
+--           info.func = self.onClick;
+--           info.arg1 = ind1;
+--           info.arg2 = nam;
+--           UIDropDownMenu_AddButton(info, level);
+--	     end
+--     end
+--  end   
+  
+  local QTRPeriodText = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRPeriodText:SetFontObject(GameFontWhite);
+  QTRPeriodText:SetJustifyH("LEFT");
+  QTRPeriodText:SetJustifyV("TOP");
+  QTRPeriodText:ClearAllPoints();
+  QTRPeriodText:SetPoint("TOPLEFT", QTRCheckButton5, "BOTTOMLEFT", 30, -20);
+  QTRPeriodText:SetFont(QTR_Font2, 13);
+  QTRPeriodText:SetText(QTR_Reklama.PERIOD);
+  
+  local QTR_slider = CreateFrame("Slider","MyAddonSlider",QTROptions,'OptionsSliderTemplate');
+  QTR_slider:ClearAllPoints();
+  QTR_slider:SetPoint("TOPLEFT",QTRPeriodText, "BOTTOMLEFT", 80, -30);
+  getglobal(QTR_slider:GetName() .. 'Low'):SetText('15 min.');
+  getglobal(QTR_slider:GetName() .. 'High'):SetText('90 min.');
+  getglobal(QTR_slider:GetName() .. 'Text'):SetText('20 min.');
+  QTR_slider:SetMinMaxValues(15, 90);
+  QTR_slider:SetValue(QTR_PS["period"]);
+  getglobal(QTR_slider:GetName() .. 'Text'):SetText(QTR_PS["period"] .. " min.");
+  QTR_slider:SetValueStep(5);
+  QTR_slider:SetScript("OnValueChanged", function(self)
+      QTR_PS["period"] = math.floor(QTR_slider:GetValue()+0.5);
+      getglobal(QTR_slider:GetName() .. 'Text'):SetText(QTR_PS["period"] .. " min.");
+      end);
+
+  local QTRChoiceText = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRChoiceText:SetFontObject(GameFontWhite);
+  QTRChoiceText:SetJustifyH("LEFT");
+  QTRChoiceText:SetJustifyV("TOP");
+  QTRChoiceText:ClearAllPoints();
+  QTRChoiceText:SetPoint("TOPLEFT", QTRPeriodText, "BOTTOMLEFT", -50, -80);
+  QTRChoiceText:SetFont(QTR_Font2, 13);
+  QTRChoiceText:SetText(QTR_Reklama.CHOICE);
+  
+  local QTRCheckText1 = CreateFrame("CheckButton", "QTRCheckText1", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckText1:SetPoint("TOPLEFT", QTRChoiceText, "BOTTOMLEFT", -10, -10);
+  QTRCheckText1:SetScript("OnClick", function(self) if (QTR_PS["text1"]=="0") then QTR_PS["text1"]="1" else QTR_PS["text1"]="0" end; end);
+  QTRCheckText1Text:SetFont(QTR_Font2, 13);
+  QTRCheckText1Text:SetText(QTR_Reklama.TEXT1);
+
+  local QTRCheckText2 = CreateFrame("CheckButton", "QTRCheckText2", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckText2:SetPoint("TOPLEFT", QTRCheckText1, "BOTTOMLEFT", 0, 0);
+  QTRCheckText2:SetScript("OnClick", function(self) if (QTR_PS["text2"]=="0") then QTR_PS["text2"]="1" else QTR_PS["text2"]="0" end; end);
+  QTRCheckText2Text:SetFont(QTR_Font2, 13);
+  QTRCheckText2Text:SetText(QTR_Reklama.TEXT2);
+  
+  local QTRIntegration0 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRIntegration0:SetFontObject(GameFontWhite);
+  QTRIntegration0:SetJustifyH("LEFT");
+  QTRIntegration0:SetJustifyV("TOP");
+  QTRIntegration0:ClearAllPoints();
+  QTRIntegration0:SetPoint("TOPLEFT", QTRCheckText2, "BOTTOMLEFT", 0, -20);
+  QTRIntegration0:SetFont(QTR_Font2, 13);
+  QTRIntegration0:SetText("Integrasi dengan addons lainnya:");
+  
+  local QTRIntegration1 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRIntegration1:SetFontObject(GameFontNormal);
+  QTRIntegration1:SetJustifyH("LEFT");
+  QTRIntegration1:SetJustifyV("TOP");
+  QTRIntegration1:ClearAllPoints();
+  QTRIntegration1:SetPoint("TOPLEFT", QTRIntegration0, "TOPRIGHT", 15, 0);
+  QTRIntegration1:SetFont(QTR_Font2, 13);
+  QTRIntegration1:SetText("ClassicQuestLog,  Immersion,  Storyline");
+
+  local QTRCheckOther1 = CreateFrame("CheckButton", "QTRCheckOther1", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckOther1:SetPoint("TOPLEFT", QTRIntegration1, "BOTTOMLEFT", -10, -10);
+  QTRCheckOther1:SetScript("OnClick", function(self) if (QTR_PS["other1"]=="0") then QTR_PS["other1"]="1" else QTR_PS["other1"]="0" end; end);
+  QTRCheckOther1Text:SetFont(QTR_Font2, 13);
+  if (ClassicQuestLog ~= nil ) then
+     QTRCheckOther1Text:SetText(QTR_Reklama.OTHER1..QTR_Reklama.ACTIV1);
+  else
+     QTRCheckOther1Text:SetText(QTR_Reklama.OTHER1..QTR_Reklama.ACTIV2);
+  end
+
+  local QTRCheckOther2 = CreateFrame("CheckButton", "QTRCheckOther2", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckOther2:SetPoint("TOPLEFT", QTRCheckOther1, "BOTTOMLEFT", 0, 0);
+  QTRCheckOther2:SetScript("OnClick", function(self) if (QTR_PS["other2"]=="0") then QTR_PS["other2"]="1" else QTR_PS["other2"]="0" end; end);
+  QTRCheckOther2Text:SetFont(QTR_Font2, 13);
+  if (ImmersionFrame ~= nil ) then
+     QTRCheckOther2Text:SetText(QTR_Reklama.OTHER2..QTR_Reklama.ACTIV1);
+  else
+     QTRCheckOther2Text:SetText(QTR_Reklama.OTHER2..QTR_Reklama.ACTIV2);
+  end
+  
+  local QTRCheckOther3 = CreateFrame("CheckButton", "QTRCheckOther3", QTROptions, "OptionsCheckButtonTemplate");
+  QTRCheckOther3:SetPoint("TOPLEFT", QTRCheckOther2, "BOTTOMLEFT", 0, 0);
+  QTRCheckOther3:SetScript("OnClick", function(self) if (QTR_PS["other3"]=="0") then QTR_PS["other3"]="1" else QTR_PS["other3"]="0" end; end);
+  QTRCheckOther3Text:SetFont(QTR_Font2, 13);
+  QTRCheckOther3Text:SetText(QTR_Reklama.OTHER3);
+  
+  local QTRWWW1 = QTROptions:CreateFontString(nil, "ARTWORK");
+  QTRWWW1:SetFontObject(GameFontWhite);
+  QTRWWW1:SetJustifyH("LEFT");
+  QTRWWW1:SetJustifyV("TOP");
+  QTRWWW1:ClearAllPoints();
+  QTRWWW1:SetPoint("BOTTOMLEFT", 16, 16);
+  QTRWWW1:SetFont(QTR_Font2, 13);
+  QTRWWW1:SetText(QTR_Reklama.WWW1);
+  
+  local QTRWWW2 = CreateFrame("EditBox", "QTRWWW2", QTROptions, "InputBoxTemplate");
+  QTRWWW2:ClearAllPoints();
+  QTRWWW2:SetPoint("TOPLEFT", QTRWWW1, "TOPRIGHT", 10, 4);
+  QTRWWW2:SetHeight(20);
+  QTRWWW2:SetWidth(155);
+  QTRWWW2:SetAutoFocus(false);
+  QTRWWW2:SetFontObject(GameFontGreen);
+  QTRWWW2:SetText(QTR_Reklama.WWW2);
+  QTRWWW2:SetCursorPosition(0);
+  QTRWWW2:SetScript("OnEnter", function(self)
+	  GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
+      getglobal("GameTooltipTextLeft1"):SetFont(QTR_Font2, 13);
+  	  GameTooltip:SetText(QTR_Reklama.WWW3, nil, nil, nil, nil, true)
+	  GameTooltip:Show() --Show the tooltip
+     end);
+  QTRWWW2:SetScript("OnLeave", function(self)
+      getglobal("GameTooltipTextLeft1"):SetFont(Original_Font2, 13);
+	  GameTooltip:Hide() --Hide the tooltip
+     end);
+  QTRWWW2:SetScript("OnTextChanged", function(self) QTRWWW2:SetText(QTR_Reklama.WWW2); end);
+
+--  if (ImmersionFrame ~= nil ) then
+--     local QTRslider = CreateFrame("Slider", "QTRslider", QTROptions, "OptionsSliderTemplate");
+--     QTRslider:SetPoint("TOPLEFT", QTRIntegration0, "BOTTOMLEFT", 0, -40);
+--     QTRslider:SetMinMaxValues(0.5, 3.0);
+--     QTRslider.minValue, QTRslider.maxValue = QTRslider:GetMinMaxValues();
+--     QTRslider.Low:SetText(QTRslider.minValue.." sek");
+--     QTRslider.High:SetText(QTRslider.maxValue.." sek");
+--     getglobal(QTRslider:GetName() .. 'Text'):SetText('Opóźnienie Immersion');
+--     getglobal(QTRslider:GetName() .. 'Text'):SetFont(QTR_Font2, 13);
+--     QTRslider:SetValue(QTR_PS["delayImmersion"]);
+--     QTRslider:SetValueStep(0.1);
+--     QTRslider:SetScript("OnValueChanged", function(self,event,arg1) 
+--                                           QTR_PS["delayImmersion"]=string.format("%.1f",event); 
+--                                           QTRsliderVal:SetText(QTR_PS["delayImmersion"]);
+--                                           end);
+--     QTRsliderVal = QTROptions:CreateFontString(nil, "ARTWORK");
+--     QTRsliderVal:SetFontObject(GameFontNormal);
+--     QTRsliderVal:SetJustifyH("CENTER");
+--     QTRsliderVal:SetJustifyV("TOP");
+--     QTRsliderVal:ClearAllPoints();
+--     QTRsliderVal:SetPoint("CENTER", QTRslider, "CENTER", 0, -12);
+--     QTRsliderVal:SetFont(QTR_Font2, 13);
+--     QTRsliderVal:SetText(QTR_PS["delayImmersion"]);   
+--     end
+  
+end
+
+
+function QTR_SaveQuest(event)
+   if (event=="QUEST_DETAIL") then
+      QTR_SAVED[QTR_quest_EN.id.." TITLE"]=GetTitleText();            -- save original title to future translation
+      QTR_SAVED[QTR_quest_EN.id.." DESCRIPTION"]=GetQuestText();      -- save original text to future translation
+      QTR_SAVED[QTR_quest_EN.id.." OBJECTIVE"]=GetObjectiveText();    -- save original text to future translation
+   end
+   if (event=="QUEST_PROGRESS") then
+      QTR_SAVED[QTR_quest_EN.id.." PROGRESS"]=GetProgressText();      -- save original text to future translation
+   end
+   if (event=="QUEST_COMPLETE") then
+      QTR_SAVED[QTR_quest_EN.id.." COMPLETE"]=GetRewardText();        -- save original text to future translation
+   end
+   if (QTR_SAVED[QTR_quest_EN.id.." TITLE"]==nil) then
+      QTR_SAVED[QTR_quest_EN.id.." TITLE"]=GetTitleText();            -- Simpan judul dalam hal hanya berakhirnya
+   end
+   QTR_SAVED[QTR_quest_EN.id.." PLAYER"]=QTR_name..'@'..QTR_race..'@'..QTR_class;  -- Simpan detail pemain
+end
+
+
+function QTR_wait(delay, func, ...)
+  if(type(delay)~="number" or type(func)~="function") then
+    return false;
+  end
+  if (QTR_waitFrame == nil) then
+    QTR_waitFrame = CreateFrame("Frame","QTR_WaitFrame", UIParent);
+    QTR_waitFrame:SetScript("onUpdate",function (self,elapse)
+      local count = #QTR_waitTable;
+      local i = 1;
+      while(i<=count) do
+        local waitRecord = tremove(QTR_waitTable,i);
+        local d = tremove(waitRecord,1);
+        local f = tremove(waitRecord,1);
+        local p = tremove(waitRecord,1);
+        if(d>elapse) then
+          tinsert(QTR_waitTable,i,{d-elapse,f,p});
+          i = i + 1;
+        else
+          count = count - 1;
+          f(unpack(p));
+        end
+      end
+    end);
+  end
+  tinsert(QTR_waitTable,{delay,func,{...}});
+  return true;
+end
+
+
+function QTR_SendReklama()
+  local now = GetTime();
+  if (last_time + QTR_PS["period"]*60 < now) then                  -- Oke, saatnya untuk menulis iklan
+     if ((QTR_PS["text1"]=="1") and (QTR_PS["text2"]=="1")) then   -- kedua teks secara bergantian
+        if (last_text==2) then
+           if (tonumber(QTR_PS["channel"])>0) then
+              SendChatMessage(QTR_Reklama.TEXT1,"CHANNEL",nil,tonumber(QTR_PS["channel"]));
+           else
+              SendChatMessage(QTR_Reklama.TEXT1,"SAY");
+           end
+           last_text = 1;
+        else
+           if (tonumber(QTR_PS["channel"])>0) then
+              SendChatMessage(QTR_Reklama.TEXT2,"CHANNEL",nil,tonumber(QTR_PS["channel"]));
+           else
+              SendChatMessage(QTR_Reklama.TEXT2,"SAY");
+           end
+           last_text = 2;
+        end
+     elseif (QTR_PS["text1"]=="1") then
+        if (tonumber(QTR_PS["channel"])>0) then
+           SendChatMessage(QTR_Reklama.TEXT1,"CHANNEL",nil,tonumber(QTR_PS["channel"]));
+        else
+           SendChatMessage(QTR_Reklama.TEXT1,"SAY");
+        end        
+        last_text = 1;
+     elseif (QTR_PS["text2"]=="1") then
+        if (tonumber(QTR_PS["channel"])>0) then
+           SendChatMessage(QTR_Reklama.TEXT2,"CHANNEL",nil,tonumber(QTR_PS["channel"]));
+        else
+           SendChatMessage(QTR_Reklama.TEXT2,"SAY");
+        end
+        last_text = 2;
+     end
+     last_time = now;
+  end   
+end
+
+
+function QTR_ON_OFF()
+   if (curr_trans=="1") then
+      curr_trans="0";
+      QTR_Translate_Off(1);
+   else   
+      curr_trans="1";
+      QTR_Translate_On(1);
+   end
+end
+
+
+function GS_ON_OFF()
+   if (curr_goss=="1") then         -- Matikan terjemahannya - Tunjukkan teks asli
+      curr_goss="0";
+      GossipGreetingText:SetText(QTR_GS[curr_hash]);
+      GossipGreetingText:SetFont(Original_Font2, 13);      
+      QTR_ToggleButtonGS:SetText("Gossip-Hash=["..tostring(curr_hash).."] EN");
+   else                             -- Tampilkan terjemahan id
+      curr_goss="1";
+      local Greeting_PL = GS_Gossip[curr_hash];
+      GossipGreetingText:SetText(QTR_ExpandUnitInfo(Greeting_PL));
+      GossipGreetingText:SetFont(QTR_Font2, 13);      
+      QTR_ToggleButtonGS:SetText("Gossip-Hash=["..tostring(curr_hash).."] PL");
+   end
+end
+
+
+-- Fungsi pertama disebabkan setelah memuat add -on
+function QTR_OnLoad()
+   QTR = CreateFrame("Frame");
+   QTR:SetScript("OnEvent", QTR_OnEvent);
+   QTR:RegisterEvent("ADDON_LOADED");
+   QTR:RegisterEvent("QUEST_ACCEPTED");
+   QTR:RegisterEvent("QUEST_DETAIL");
+   QTR:RegisterEvent("QUEST_PROGRESS");
+   QTR:RegisterEvent("QUEST_COMPLETE");
+--   QTR:RegisterEvent("QUEST_FINISHED");
+--   QTR:RegisterEvent("QUEST_GREETING");
+   QTR:RegisterEvent("GOSSIP_SHOW");
+
+   -- Tombol dari ID Quest di Questframe (NPC)
+   QTR_ToggleButton0 = CreateFrame("Button",nil, QuestFrame, "UIPanelButtonTemplate");
+   QTR_ToggleButton0:SetWidth(150);
+   QTR_ToggleButton0:SetHeight(20);
+   QTR_ToggleButton0:SetText("Quest ID=?");
+   QTR_ToggleButton0:Show();
+   QTR_ToggleButton0:ClearAllPoints();
+   QTR_ToggleButton0:SetPoint("TOPLEFT", QuestFrame, "TOPLEFT", 120, -50);
+   QTR_ToggleButton0:SetScript("OnClick", QTR_ON_OFF);
+   
+   --Tombol dari ID Quest No. W QuestFrameProgressPanel
+   QTR_ToggleButton1 = CreateFrame("Button",nil, QuestLogFrame, "UIPanelButtonTemplate");
+   QTR_ToggleButton1:SetWidth(150);
+   QTR_ToggleButton1:SetHeight(20);
+   QTR_ToggleButton1:SetText("Quest ID=?");
+   QTR_ToggleButton1:Show();
+   QTR_ToggleButton1:ClearAllPoints();
+   QTR_ToggleButton1:SetPoint("TOPLEFT", QuestLogFrame, "TOPLEFT", 178, -58);
+   QTR_ToggleButton1:SetScript("OnClick", QTR_ON_OFF);
+
+   --Tombol dari ID Quest No. W QuestMapDetailsScrollFrame
+   QTR_ToggleButton2 = CreateFrame("Button",nil, QuestMapDetailsScrollFrame, "UIPanelButtonTemplate");
+   QTR_ToggleButton2:SetWidth(150);
+   QTR_ToggleButton2:SetHeight(20);
+   QTR_ToggleButton2:SetText("Quest ID=?");
+   QTR_ToggleButton2:Show();
+   QTR_ToggleButton2:ClearAllPoints();
+   QTR_ToggleButton2:SetPoint("TOPLEFT", QuestMapDetailsScrollFrame, "TOPLEFT", 116, 29);
+   QTR_ToggleButton2:SetScript("OnClick", QTR_ON_OFF);
+
+   -- tombol dari hash gosip No. w QuestMapDetailsScrollFrame
+   QTR_ToggleButtonGS = CreateFrame("Button",nil, GossipFrame.GreetingPanel, "UIPanelButtonTemplate");
+   QTR_ToggleButtonGS:SetWidth(220);
+   QTR_ToggleButtonGS:SetHeight(20);
+   QTR_ToggleButtonGS:SetText("Gossip-Hash=?");
+   QTR_ToggleButtonGS:Show();
+   QTR_ToggleButtonGS:ClearAllPoints();
+   QTR_ToggleButtonGS:SetPoint("TOPLEFT", GossipFrame.GreetingPanel, "TOPLEFT", 90, -50);
+   QTR_ToggleButtonGS:SetScript("OnClick", GS_ON_OFF);
+
+   -- Fungsi Dipanggil Setelah Mengklik pada Quest in Quest Tracker
+--   hooksecurefunc(QUEST_TRACKER_MODULE, "OnBlockHeaderClick", QTR_PrepareReload);
+   
+   -- Fungsi dipanggil setelah mengklik nama pencarian di QuestLog
+  QuestLogDetailScrollFrame:HookScript("OnShow", QTR_Prepare1sek);
+  EmptyQuestLogFrame:HookScript("OnShow", QTR_EmptyQuestLog);
+  hooksecurefunc("SelectQuestLogEntry", QTR_Prepare1sek);
+--  QuestLogPopupDetailFrame:HookScript("OnShow", QTR_PrepareReload);
+
+--  QuestLogTitleButton:HookScript("OnClick", QTR_PrepareReload);
+--  if hooksecurefunc then
+--     hooksecurefunc("QuestLogTitleButton_OnClick", function() QTR_PrepareReload() end);
+--  end
+
+--   hooksecurefunc("QuestMapFrame_ShowQuestDetails", QTR_PrepareReload);
+   
+   isClassicQuestLog();
+   isImmersion();
+   isStoryline();
+end
+
+
+function isClassicQuestLog()
+   if (ClassicQuestLog ~= nil ) then
+      if (QTR_ToggleButton3==nil) then
+         -- Tombol dari ID Quest No. WClassicQuestLog
+         QTR_ToggleButton3 = CreateFrame("Button",nil, ClassicQuestLog, "UIPanelButtonTemplate");
+         QTR_ToggleButton3:SetWidth(150);
+         QTR_ToggleButton3:SetHeight(20);
+         QTR_ToggleButton3:SetText("Quest ID=?");
+         QTR_ToggleButton3:Show();
+         QTR_ToggleButton3:ClearAllPoints();
+         QTR_ToggleButton3:SetPoint("TOPLEFT", ClassicQuestLog, "TOPLEFT", 330, -33);
+         QTR_ToggleButton3:SetScript("OnClick", QTR_ON_OFF);
+         -- Data di QuestLog telah diperbarui
+         ClassicQuestLog:HookScript("OnUpdate", function() QTR_PrepareReload() end);
+      end
+      return true;
+   else
+      return false;   
+   end
+end
+
+
+function isImmersion()
+   if (ImmersionFrame ~= nil ) then
+      if (QTR_ToggleButton4==nil) then
+         -- Tombol dari ID Quest No.
+         QTR_ToggleButton4 = CreateFrame("Button",nil, ImmersionFrame.TalkBox, "UIPanelButtonTemplate");
+         QTR_ToggleButton4:SetWidth(150);
+         QTR_ToggleButton4:SetHeight(20);
+         QTR_ToggleButton4:SetText("Quest ID=?");
+         QTR_ToggleButton4:Show();
+         QTR_ToggleButton4:ClearAllPoints();
+         QTR_ToggleButton4:SetPoint("TOPLEFT", ImmersionFrame.TalkBox, "TOPRIGHT", -200, -116);
+         QTR_ToggleButton4:SetScript("OnClick", QTR_ON_OFF);
+         -- Jendela Tambah Perendam Dibuka: Panggilan Onvent
+         ImmersionFrame.TalkBox:HookScript("OnHide",function() QTR_ToggleButton4:Hide(); end);
+         QTR_ToggleButton4:Disable();     -- Anda belum bisa menekannya
+         QTR_ToggleButton4:Hide();        -- Awalnya Tombol Tak Terlihat (karena mungkin ada pilihan pencarian)
+      end
+      return true;
+   else   
+      return false;
+   end
+end
+   
+
+function isStoryline()
+   if (Storyline_NPCFrame ~= nil ) then
+      if (QTR_ToggleButton5==nil) then
+         -- Tombol dari ID Quest No.
+         QTR_ToggleButton5 = CreateFrame("Button",nil, Storyline_NPCFrameChat, "UIPanelButtonTemplate");
+         QTR_ToggleButton5:SetWidth(150);
+         QTR_ToggleButton5:SetHeight(20);
+         QTR_ToggleButton5:SetText("Quest ID=?");
+         QTR_ToggleButton5:Hide();
+         QTR_ToggleButton5:ClearAllPoints();
+         QTR_ToggleButton5:SetPoint("BOTTOMLEFT", Storyline_NPCFrameChat, "BOTTOMLEFT", 244, -16);
+         QTR_ToggleButton5:SetScript("OnClick", QTR_ON_OFF);
+         Storyline_NPCFrameObjectivesContent:HookScript("OnShow", function() QTR_Storyline_Objectives() end);
+         Storyline_NPCFrameRewards:HookScript("OnShow", function() QTR_Storyline_Rewards() end);
+         Storyline_NPCFrameChat:HookScript("OnHide", function() QTR_Storyline_Hide() end);
+--         QTR_ToggleButton5:Disable();     -- Anda tidak bisa menekan
+      end
+      return true;
+   else
+      return false;
+   end
+end
+
+
+--Menentukan nomor pencarian ID saat ini dari berbagai metode
+function QTR_GetQuestID()
+     if ( isGetQuestID=="1" ) then
+      quest_ID = GetQuestID();
+   end
+   
+   if ((QuestLogFrame:IsVisible() or isClassicQuestLog()) and ((quest_ID==nil) or (quest_ID==0))) then
+      local questTitle, level, questTag, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(GetQuestLogSelection());
+      quest_ID = questID;
+   end
+   
+   if ((quest_ID==nil) and (QuestFrame)) then
+      quest_ID = QuestFrame.questID;
+   end
+   if ((quest_ID==nil) and (QuestLogPopupDetailFrame)) then
+      quest_ID = QuestLogPopupDetailFrame.questID;
+   end
+     
+   if(quest_ID==nil) then
+      if (isImmersion() and ImmersionFrame:IsVisible()) then
+         local nameOrig=ImmersionFrame.TalkBox.NameFrame.Name:GetText();
+         local i = 1;
+         while GetQuestLogTitle(i) do    -- Jelajahi semua pencarian di QuestLog
+            local questTitle, level, questTag, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i);
+            if (questTitle==nameOrig) then
+               quest_ID = questID;
+               break;
+            end
+            i = i + 1;
+         end         
+      end
+      if (isStoryline() and Storyline_NPCFrameTitle:IsVisible()) then
+         local nameOrig=Storyline_NPCFrameTitle:GetText();
+         local i = 1;
+         while GetQuestLogTitle(i) do    -- Jelajahi semua pencarian di QuestLog
+            local questTitle, level, questTag, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i);
+            if (questTitle==nameOrig) then
+               quest_ID = questID;
+               break;
+            end
+            i = i + 1;
+         end        
+      end
+   end   
+   
+   if (quest_ID==nil) then
+      if (QTR_onDebug) then
+         print('Dia tidak menemukan ID');
+      end   
+      quest_ID=0;
+   else   
+      if (QTR_onDebug) then
+         print('Dia menemukan id='..tostring(quest_ID));
+      end   
+   end   
+   
+   return (quest_ID);
+end
+
+
+
+-- Disebabkan oleh peristiwa yang dicegat
+function QTR_OnEvent(self, event, name, ...)
+   isStoryline();       -- Buat tombol saat alur cerita aktif
+   if (QTR_onDebug) then
+      print('OnEvent-event: '..event);   
+   end   
+   if (event=="ADDON_LOADED" and name=="WoWID_Quests") then
+      SlashCmdList["WoWID_QUESTS"] = function(msg) QTR_SlashCommand(msg); end
+      SLASH_WoWID_QUESTS1 = "/WoWID-quests";
+      SLASH_WoWID_QUESTS2 = "/qtr";
+      QTR_CheckVars();
+      -- Buat Antarmuka Opsi di Blizzard-Interface-Addons
+      QTR_BlizzardOptions();
+      print ("|cffffff00WoWID-Quests  ver. "..QTR_version.." - "..QTR_Messages.loaded);
+      QTR:UnregisterEvent("ADDON_LOADED");
+      QTR.ADDON_LOADED = nil;
+      QTR_Messages.itemchoose1 = Spr_Gender(QTR_Messages.itemchoose1);
+      if (not isGetQuestID) then
+         DetectEmuServer();
+      end
+   elseif (event=="QUEST_DETAIL" or event=="QUEST_PROGRESS" or event=="QUEST_COMPLETE") then
+      if ( QuestFrame:IsVisible() or isImmersion()) then
+         QTR_QuestPrepare(event);
+      elseif (isStoryline()) then
+         if (not QTR_wait(1,QTR_Storyline_Quest)) then
+         -- tunda 1 detik
+         end
+      end	-- QuestFrame is Visible
+   elseif (event=="GOSSIP_SHOW") then
+      QTR_Gossip_Show();
+   elseif (isImmersion() and event=="QUEST_ACCEPTED") then
+      QTR_delayed3();
+   end
+   if (QTR_PS["reklama"]=="1") then
+      QTR_SendReklama();
+   end
+end
+
+
+-- Jendela percakapan dengan NPC telah dibuka
+function QTR_Gossip_Show()
+   if (QTR_onDebug) then
+      print('Open GOSSIP frame');   
+   end   
+--   QTR_ToggleButton0:Hide();        -- Kami menutup tombol QTR selama percakapan dengan NPC (deskripsi dan pemilihan tugas)
+   local Nazwa_NPC = QuestFrameNpcNameText:GetText();
+   curr_hash = 0;
+   if (Nazwa_NPC and GreetingText) then
+      local GossipTextFrame;
+      Greeting_Text = C_GossipInfo:GetText();         
+      for _,GTxtframe in GossipFrame.GreetingPanel.ScrollBox:EnumerateFrames() do      -- Unduh objek enumeral
+         local GTtype =  GTxtframe.GetElementData().buttonType;
+         if (GTxtframe.GreetingText) then    -- Greeting Text
+            GossipTextFrame = GTxtframe;
+         else
+            if ((GTtype==3) or (((GTtype==4) or (GTtype==5)) and (QTR_PS["transtitle"]=="1"))) then    -- gossip options
+               local GOptionText = GTxtframe:GetText();
+               local prefix = "";
+               local sufix = "";
+               if (string.sub(GOptionText,1,2) == "|c") then
+                  prefix = string.sub(GOptionText, 1, 10);
+                  sufix = "|r";
+                  GOptionText = string.gsub(GOptionText, prefix, "");
+                  GOptionText = string.gsub(GOptionText, sufix, "");
+               end
+               local OptHash = StringHash(GOptionText);
+               if (GS_Gossip[OptHash]) then               -- Ada terjemahan
+                  GTxtframe:SetText(prefix .. QTR_ExpandUnitInfo(GS_Gossip[OptHash],false) .. sufix);
+                  local regions = { GTxtframe:GetRegions() };     -- Mencari objek fontString untuk mengatur font Anda
+                  for k, v in pairs(regions) do
+                     if (v:GetObjectType() == "FontString") then
+                        v:SetFont(QTR_Font2, 13);
+                     end
+                  end
+               end
+            end
+         end
+      end
+      if (string.find(Greeting_Text," ")==nil) then         -- Ini bukan teks dalam bahasa indonesia (tidak ada ruang yang sulit)
+         Nazwa_NPC = string.gsub(Nazwa_NPC, '"', '\"');
+         Greeting_Text = string.gsub(Greeting_Text, '"', '\"');
+         local Czysty_Text = string.gsub(Greeting_Text, '\r', '');
+         Czysty_Text = string.gsub(Czysty_Text, '\n', '$B');
+         Czysty_Text = string.gsub(Czysty_Text, QTR_name, '$N');
+         Czysty_Text = string.gsub(Czysty_Text, string.upper(QTR_name), '$N$');
+         Czysty_Text = string.gsub(Czysty_Text, QTR_race, '$R');
+         Czysty_Text = string.gsub(Czysty_Text, string.lower(QTR_race), '$R');
+         Czysty_Text = string.gsub(Czysty_Text, QTR_class, '$C');
+         Czysty_Text = string.gsub(Czysty_Text, string.lower(QTR_class), '$C');
+         Czysty_Text = string.gsub(Czysty_Text, '$N$', '');
+         Czysty_Text = string.gsub(Czysty_Text, '$N', '');
+         Czysty_Text = string.gsub(Czysty_Text, '$B', '');
+         Czysty_Text = string.gsub(Czysty_Text, '$R', '');
+         Czysty_Text = string.gsub(Czysty_Text, '$C', '');
+         local Hash = StringHash(Czysty_Text);
+         curr_hash = Hash;
+         QTR_GS[Hash] = Greeting_Text;                      -- Rekam teks asli
+         if ( GS_Gossip[Hash] ) then   -- Ada terjemahan teks gosip NPC ini
+            local Greeting_PL = GS_Gossip[Hash];
+            if (GossipTextFrame) then
+               QTR_ToggleButtonGS:SetText("Gossip-Hash="..tostring(Hash).." PL");
+               QTR_ToggleButtonGS:Enable();
+               GossipGreetingText = GossipTextFrame.GreetingText;
+               GossipGreetingText:SetText(QTR_ExpandUnitInfo(Greeting_PL,false));
+               GossipGreetingText:SetFont(QTR_Font2, 13);
+               curr_goss="1";
+            end
+            if (isImmersion() and (QTR_PS["other2"]=="1")) then       -- adalah perendaman aktif dan diizinkan untuk diterjemahkan
+               ImmersionFrame.TalkBox.TextFrame.Text:SetFont(QTR_Font2, 14);
+               ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_ExpandUnitInfo(Greeting_PL,false));     
+            end
+         else              -- Kami tidak memiliki terjemahan
+            QTR_ToggleButtonGS:SetText("Gossip-Hash="..tostring(Hash).." EN");
+            QTR_ToggleButtonGS:Disable();
+            if (QTR_PS["gossiponline"]=="1") then
+               QTR_FrameOnLineHash = Hash;
+               QTR_ShowOnLine();
+            elseif (QTR_FrameOnLine) then
+               QTR_FrameOnLine:Hide();
+            end
+            -- Simpan ke file
+            if (C_Map.GetBestMapForUnit("player")) then
+               QTR_GOSSIP[Nazwa_NPC.."@"..tostring(Hash).."@"..C_Map.GetBestMapForUnit("player")] = Greeting_Text.."@"..QTR_name..":"..QTR_race..":"..QTR_class;
+            else
+               QTR_GOSSIP[Nazwa_NPC.."@"..tostring(Hash).."@0"] = Greeting_Text.."@"..QTR_name..":"..QTR_race..":"..QTR_class;
+            end
+         end
+      end
+   end
+end
+
+
+
+-- Questlog kosong telah dibuka
+function QTR_EmptyQuestLog()
+   QTR_ToggleButton1:Hide();
+end
+
+
+--QuestLogFrame atau QuestMapDetailsScrollfreme atau ClassicQuestLog atau Perendaman telah dibuka
+function QTR_QuestPrepare(zdarzenie)
+   QTR_ToggleButton1:Show();        -- Tunjukkan, karena dia bisa disembunyikan dengan questlog kosong
+   if (isClassicQuestLog()) then
+      if (QTR_PS["other1"]=="0") then       -- adalah classicquestlog yang aktif, tetapi tidak diizinkan untuk diterjemahkan
+         QTR_ToggleButton3:Hide();
+         return;
+      else   
+         QTR_ToggleButton3:Show();
+         if (ClassicQuestLog:IsVisible() and (curr_trans=="0")) then
+            QTR_Translate_Off(1);
+            local questTitle, level, questTag, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(GetQuestLogSelection());
+            if (QTR_quest_EN.id==questID) then
+               return;
+            end
+         end
+      end   
+   end
+   if (isImmersion()) then
+      if (QTR_PS["other2"]=="0") then       -- Perendaman aktif, tetapi tidak diizinkan untuk diterjemahkan
+         QTR_ToggleButton4:Hide();
+         return
+      else
+         QTR_ToggleButton4:Show();
+         if (ImmersionContentFrame:IsVisible() and (curr_trans=="0")) then
+            QTR_Translate_Off(1);
+            return;
+         end
+      end      
+   end
+   q_ID = QTR_GetQuestID();
+   str_ID = tostring(q_ID);
+   QTR_quest_EN.id = q_ID;
+   QTR_quest_LG.id = q_ID;
+   if (isStoryline()) then
+      QTR_ToggleButton5:Hide();
+      if (QTR_PS["other3"]=="1") then
+         if (q_ID>0) then
+            QTR_ToggleButton5:Show();
+         end
+      else        -- Itu tidak diizinkan untuk menerjemahkan
+         return
+     end      
+   end
+   if (QTR_PS["control"]=="1") then         -- Simpan Kontrol Konten EN Quest Asli
+      QTR_quest_EN.title = GetTitleText();
+      if (QTR_quest_EN.title=="") then
+         QTR_quest_EN.title=GetQuestLogTitle(GetQuestLogSelection());
+      end
+      QTR_CONTROL[QTR_quest_EN.id.." TITLE"]=QTR_quest_EN.title;
+      if (zdarzenie=="QUEST_DETAIL") then
+         QTR_quest_EN.details = GetQuestText();
+         QTR_quest_EN.objectives = GetObjectiveText();
+         QTR_CONTROL[QTR_quest_EN.id.." DESCRIPTION"]=QTR_quest_EN.details;
+         QTR_CONTROL[QTR_quest_EN.id.." OBJECTIVE"]=QTR_quest_EN.objectives;
+      end
+      if (zdarzenie=="QUEST_PROGRESS") then
+         QTR_quest_EN.progress = GetProgressText();
+         QTR_CONTROL[QTR_quest_EN.id.." PROGRESS"]=QTR_quest_EN.progress;
+      end
+      if (zdarzenie=="QUEST_COMPLETE") then
+         QTR_quest_EN.completion = GetRewardText();
+         QTR_CONTROL[QTR_quest_EN.id.." COMPLETE"]=QTR_quest_EN.completion;
+      end
+      QTR_CONTROL[QTR_quest_EN.id.." PLAYER"]=QTR_name..'@'..QTR_race..'@'..QTR_class;  -- Simpan detail pemain
+   end
+   if ( QTR_PS["active"]=="1" ) then	--Terjemahan diaktifkan
+      QTR_ToggleButton0:Enable();
+      QTR_ToggleButton1:Enable();
+      QTR_ToggleButton2:Enable();
+      if (isImmersion()) then
+         if (q_ID==0) then
+            return;
+         end   
+         QTR_ToggleButton4:Enable();
+      end
+      curr_trans = "1";
+      if ( QTR_QuestData[str_ID] ) then   -- Tampilkan hanya jika ada terjemahan
+         if (QTR_onDebug) then
+            print('Dia menemukan terjemahan untuk ID: '..str_ID);   
+         end   
+         QTR_quest_LG.title = QTR_ExpandUnitInfo(QTR_QuestData[str_ID]["Title"]);
+         QTR_quest_EN.title = GetTitleText();
+         if (QTR_quest_EN.title=="") then
+            QTR_quest_EN.title=GetQuestLogTitle(GetQuestLogSelection());
+         end
+         QTR_quest_LG.details = QTR_ExpandUnitInfo(QTR_QuestData[str_ID]["Description"]);
+         QTR_quest_LG.objectives = QTR_ExpandUnitInfo(QTR_QuestData[str_ID]["Objectives"]);
+--         QTR_quest_EN.details = QuestLogQuestDescription:GetText();
+--         QTR_quest_EN.objectives = QuestLogObjectivesText:GetText();
+         if (zdarzenie=="QUEST_DETAIL") then
+            QTR_quest_EN.details = GetQuestText();
+            QTR_quest_EN.objectives = GetObjectiveText();
+            QTR_quest_EN.itemchoose = QTR_MessOrig.itemchoose1;
+            QTR_quest_LG.itemchoose = QTR_Messages.itemchoose1;
+            QTR_quest_EN.itemreceive = QTR_MessOrig.itemreceiv1;
+            QTR_quest_LG.itemreceive = QTR_Messages.itemreceiv1;
+            if (strlen(QTR_quest_EN.details)>0 and strlen(QTR_quest_LG.details)==0) then
+               QTR_MISSING[QTR_quest_EN.id.." DESCRIPTION"]=QTR_quest_EN.details;     -- save missing translation part
+            end
+            if (strlen(QTR_quest_EN.objectives)>0 and strlen(QTR_quest_LG.objectives)==0) then
+               QTR_MISSING[QTR_quest_EN.id.." OBJECTIVE"]=QTR_quest_EN.objectives;    -- save missing translation part
+            end
+         else   
+            if (QTR_quest_LG.details ~= QuestLogQuestDescription:GetText()) then
+               QTR_quest_EN.details = QuestLogQuestDescription:GetText();
+            end
+            if (QTR_quest_LG.objectives ~= QuestLogObjectivesText:GetText()) then
+               QTR_quest_EN.objectives = QuestLogObjectivesText:GetText();
+            end
+         end   
+         if (zdarzenie=="QUEST_PROGRESS") then
+            QTR_quest_EN.progress = GetProgressText();
+            QTR_quest_LG.progress = QTR_ExpandUnitInfo(QTR_QuestData[str_ID]["Progress"]);
+            if (strlen(QTR_quest_EN.progress)>0 and strlen(QTR_quest_LG.progress)==0) then
+               QTR_MISSING[QTR_quest_EN.id.." PROGRESS"]=QTR_quest_EN.progress;     -- save missing translation part
+            end
+            if (strlen(QTR_quest_LG.progress)==0) then      -- Kontennya kosong dan jendela kemajuan telah dibuka
+               QTR_quest_LG.progress = QTR_ExpandUnitInfo('Anda baik -baik saja, YOUR_NAME');
+            end
+         end
+         if (zdarzenie=="QUEST_COMPLETE") then
+            QTR_quest_EN.completion = GetRewardText();
+            QTR_quest_LG.completion = QTR_ExpandUnitInfo(QTR_QuestData[str_ID]["Completion"]);
+            QTR_quest_EN.itemchoose = QTR_MessOrig.itemchoose2;
+            QTR_quest_LG.itemchoose = QTR_Messages.itemchoose2;
+            QTR_quest_EN.itemreceive = QTR_MessOrig.itemreceiv2;
+            QTR_quest_LG.itemreceive = QTR_Messages.itemreceiv2;
+            if (strlen(QTR_quest_EN.completion)>0 and strlen(QTR_quest_LG.completion)==0) then
+               QTR_MISSING[QTR_quest_EN.id.." COMPLETE"]=QTR_quest_EN.completion;     -- save missing translation part
+            end
+         end         
+         QTR_ToggleButton0:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         QTR_ToggleButton1:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         QTR_ToggleButton2:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+            QTR_ToggleButton3:Enable();
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+            QTR_quest_EN.details = GetQuestText();
+            QTR_quest_EN.progress = GetProgressText();
+            QTR_quest_EN.completion = GetRewardText();
+         end
+         if (isStoryline() and Storyline_NPCFrame:IsVisible()) then
+            QTR_ToggleButton5:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         end
+         QTR_Translate_On(1);
+         if (QTR_first_show==0) then      -- Tampilan pertama, berikan penundaan dan sakelar karena tidak menampilkan data tetap 
+            if (not QTR_wait(0.2,QTR_ON_OFF)) then    -- Muat ulang terlebih dahulu OFF
+            ---
+            end
+            if (not QTR_wait(0.2,QTR_ON_OFF)) then    -- Muat ulang lagi
+            ---
+            end
+            QTR_first_show=1;
+         end
+      else	      -- Tidak ada pencarian seperti itu
+         if (QTR_onDebug) then
+            print('Dia tidak menemukan terjemahan untuk ID: '..str_ID);   
+         end   
+         QTR_ToggleButton0:Disable();
+         QTR_ToggleButton1:Disable();
+         QTR_ToggleButton2:Disable();
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:Disable();
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:Disable();
+         end
+         if (isStoryline()) then
+            QTR_ToggleButton5:Disable();
+         end
+         QTR_ToggleButton0:SetText("Quest ID="..str_ID);
+         QTR_ToggleButton1:SetText("Quest ID="..str_ID);
+         QTR_ToggleButton2:SetText("Quest ID="..str_ID);
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:SetText("Quest ID="..str_ID);
+         end
+         if (isImmersion()) then
+            if (q_ID==0) then
+               if (ImmersionFrame.TitleButtons:IsVisible()) then
+                  QTR_ToggleButton4:SetText("Pilih dulu quest");
+               end
+            else
+               QTR_ToggleButton4:SetText("Quest ID="..str_ID);
+            end
+         end
+         if (isStoryline()) then
+            QTR_ToggleButton5:SetText("Quest ID="..str_ID);
+         end
+         QTR_Translate_On(0);
+         QTR_SaveQuest(zdarzenie);
+      end 
+   else	-
+      QTR_ToggleButton0:Disable();
+      QTR_ToggleButton1:Disable();
+      QTR_ToggleButton2:Disable();
+--         if (isClassicQuestLog()) then
+--            QTR_ToggleButton3:Disable();
+--         end
+--         if (isImmersion()) then
+--            QTR_ToggleButton4:Disable();
+--         end
+      if ( QTR_QuestData[str_ID] ) then	
+         QTR_ToggleButton1:SetText("Quest ID="..str_ID.." (EN)");
+         QTR_ToggleButton2:SetText("Quest ID="..str_ID.." (EN)");
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:SetText("Quest ID="..str_ID.." (EN)");
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:SetText("Quest ID="..str_ID.." (EN)");
+         end
+         if (isStoryline()) then
+            QTR_ToggleButton5:SetText("Quest ID="..str_ID.." (EN)");
+         end
+      else
+         QTR_ToggleButton1:SetText("Quest ID="..str_ID);
+         QTR_ToggleButton2:SetText("Quest ID="..str_ID);
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:SetText("Quest ID="..str_ID);
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:SetText("Quest ID="..str_ID);
+         end
+         if (isStoryline()) then
+            QTR_ToggleButton5:SetText("Quest ID="..str_ID);
+         end
+      end
+   end	
+   if (QTR_PS["reklama"]=="1") then
+      QTR_SendReklama();
+   end
+end
+
+
+-- menampilkan terjemahan
+function QTR_Translate_On(typ)
+   if (QTR_onDebug) then
+      print('Menampilkan terjemahan');   
+   end   
+   QuestInfoObjectivesHeader:SetFont(QTR_Font1, 18);
+   QuestInfoObjectivesHeader:SetText(QTR_Messages.objectives); 
+
+   QuestLogRewardTitleText:SetFont(QTR_Font1, 18);
+   QuestLogRewardTitleText:SetText(QTR_Messages.rewards);      
+   QuestInfoRewardsFrame.Header:SetFont(QTR_Font1, 18);
+   QuestInfoRewardsFrame.Header:SetText(QTR_Messages.rewards);  
+   
+   QuestLogDescriptionTitle:SetFont(QTR_Font1, 18);
+   QuestLogDescriptionTitle:SetText(QTR_Messages.details);     
+   
+   QuestProgressRequiredItemsText:SetFont(QTR_Font1, 18);
+   QuestProgressRequiredItemsText:SetText(QTR_Messages.reqitems);
+   
+--   QuestInfoSpellObjectiveLearnLabel:SetFont(QTR_Font2, 13);
+--   QuestInfoSpellObjectiveLearnLabel:SetText(QTR_Messages.learnspell);
+--   QuestInfoXPFrame.ReceiveText:SetFont(QTR_Font2, 13);
+--   QuestInfoXPFrame.ReceiveText:SetText(QTR_Messages.experience);
+--   MapQuestInfoRewardsFrame.ItemChooseText:SetFont(QTR_Font2, 11);
+--   MapQuestInfoRewardsFrame.ItemReceiveText:SetFont(QTR_Font2, 11);
+--   MapQuestInfoRewardsFrame.ItemChooseText:SetText(QTR_Messages.itemchoose1);
+--   MapQuestInfoRewardsFrame.ItemReceiveText:SetText(QTR_Messages.itemreceiv1);
+   if (typ==1) then			-- sakelar penuh (ada terjemahan)
+      QuestLogItemChooseText:SetFont(QTR_Font2, 13);
+      QuestLogItemChooseText:SetText(QTR_Messages.itemchoose1);
+      QuestLogItemReceiveText:SetFont(QTR_Font2, 13);
+      QuestLogItemReceiveText:SetText(QTR_Messages.itemreceiv1);
+      numer_ID = QTR_quest_LG.id;
+      str_ID = tostring(numer_ID);
+      if (numer_ID>0 and QTR_QuestData[str_ID]) then	-- Kembalikan versi terjemahan dari subtitle
+         if (QTR_onDebug) then
+            print('kerumunan.ID='..str_ID);   
+         end   
+         if (QTR_PS["transtitle"]=="1") then    -- Lihat judul yang diterjemahkan
+            QuestLogQuestTitle:SetFont(QTR_Font1, 18);
+            QuestLogQuestTitle:SetText(QTR_quest_LG.title);
+            QuestInfoTitleHeader:SetFont(QTR_Font1, 18);
+            QuestInfoTitleHeader:SetText(QTR_quest_LG.title);
+            QuestProgressTitleText:SetFont(QTR_Font1, 18);
+            QuestProgressTitleText:SetText(QTR_quest_LG.title);
+         end
+         QTR_ToggleButton0:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         QTR_ToggleButton1:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         QTR_ToggleButton2:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         if (isClassicQuestLog()) then
+            QTR_ToggleButton3:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+         end
+         if (isImmersion()) then
+            QTR_ToggleButton4:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+            if (not QTR_wait(0.2,QTR_Immersion)) then    
+               
+            end
+         end
+         if (isStoryline() and Storyline_NPCFrame:IsVisible()) then
+            QTR_ToggleButton5:SetText("Quest ID="..QTR_quest_LG.id.." ("..QTR_lang..")");
+            QTR_Storyline(1);
+         end
+         QuestLogQuestDescription:SetFont(QTR_Font2, 13);
+         QuestLogQuestDescription:SetText(QTR_quest_LG.details);
+         QuestInfoDescriptionText:SetFont(QTR_Font2, 13);
+         QuestInfoDescriptionText:SetText(QTR_quest_LG.details);
+         QuestInfoObjectivesText:SetFont(QTR_Font2, 13);
+         QuestInfoObjectivesText:SetText(QTR_quest_LG.objectives);
+         
+         QuestLogObjectivesText:SetFont(QTR_Font2, 13);
+         QuestLogObjectivesText:SetText(QTR_quest_LG.objectives);
+         
+         QuestProgressText:SetFont(QTR_Font2, 13);
+         QuestProgressText:SetText(QTR_quest_LG.progress);
+         QuestInfoRewardText:SetFont(QTR_Font2, 13);
+         QuestInfoRewardText:SetText(QTR_quest_LG.completion);
+         
+         QuestInfoRewardsFrame.ItemChooseText:SetFont(QTR_Font2, 13);
+         QuestInfoRewardsFrame.ItemChooseText:SetText(QTR_quest_LG.itemchoose);
+         QuestInfoRewardsFrame.ItemReceiveText:SetFont(QTR_Font2, 13);
+         QuestInfoRewardsFrame.ItemReceiveText:SetText(QTR_quest_LG.itemreceive);
+      end
+   else
+      if (curr_trans == "1") then
+         QuestInfoRewardsFrame.ItemChooseText:SetText(QTR_Messages.itemchoose1);
+         QuestInfoRewardsFrame.ItemReceiveText:SetText(QTR_Messages.itemreceiv1);
+         if ((ImmersionFrame ~= nil ) and (ImmersionFrame.TalkBox:IsVisible() )) then
+            if (not QTR_wait(0.2,QTR_Immersion_Static)) then
+               
+            end
+         end
+      end
+   end
+end
+
+
+
+-- menampilkan teks asli
+function QTR_Translate_Off(typ)
+   QuestInfoTitleHeader:SetFont(Original_Font1, 18);
+   QuestInfoTitleHeader:SetText(QTR_quest_EN.title);
+--   QuestProgressTitleText:SetText(QTR_quest_EN.title);        
+--   QuestProgressTitleText:SetFont(Original_Font1, 18);
+   
+   QuestLogQuestTitle:SetFont(Original_Font1, 18);
+   QuestLogQuestTitle:SetText(QTR_quest_EN.title);
+   
+   QuestInfoObjectivesHeader:SetFont(Original_Font1, 18);      -- Quest Objectives
+   QuestInfoObjectivesHeader:SetText(QTR_MessOrig.objectives);
+
+   QuestLogRewardTitleText:SetFont(Original_Font1, 18);        -- Reward
+   QuestLogRewardTitleText:SetText(QTR_MessOrig.rewards);
+   QuestInfoRewardsFrame.Header:SetFont(Original_Font1, 18);   -- Reward
+   QuestInfoRewardsFrame.Header:SetText(QTR_MessOrig.rewards);
+   
+   QuestLogDescriptionTitle:SetFont(Original_Font1, 18);       -- Description
+   QuestLogDescriptionTitle:SetText(QTR_MessOrig.details);
+   
+   QuestProgressRequiredItemsText:SetFont(Original_Font1, 18);
+   QuestProgressRequiredItemsText:SetText(QTR_MessOrig.reqitems);
+   
+--   MapQuestInfoRewardsFrame.ItemReceiveText:SetFont(Original_Font2, 11);
+--   MapQuestInfoRewardsFrame.ItemChooseText:SetFont(Original_Font2, 11);
+   QuestInfoSpellObjectiveLearnLabel:SetFont(Original_Font2, 13);
+   QuestInfoSpellObjectiveLearnLabel:SetText(QTR_MessOrig.learnspell);
+   QuestInfoXPFrame.ReceiveText:SetFont(Original_Font2, 13);
+   QuestInfoXPFrame.ReceiveText:SetText(QTR_MessOrig.experience);
+   if (typ==1) then			-- sakelar penuh (ada terjemahan)
+      QuestLogItemChooseText:SetFont(Original_Font2, 13);
+      QuestLogItemChooseText:SetText(QTR_MessOrig.itemchoose1);
+      QuestLogItemReceiveText:SetFont(Original_Font2, 13);
+      QuestLogItemReceiveText:SetText(QTR_MessOrig.itemreceiv1);
+--      MapQuestInfoRewardsFrame.ItemReceiveText:SetText(QTR_MessOrig.itemreceiv1);
+--      MapQuestInfoRewardsFrame.ItemChooseText:SetText(QTR_MessOrig.itemreceiv1);
+      numer_ID = QTR_quest_EN.id;
+      if (numer_ID>0 and QTR_QuestData[str_ID]) then	-- Kembalikan versi asli subtitle
+         QTR_ToggleButton0:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+         QTR_ToggleButton1:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+         QTR_ToggleButton2:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+         if (ClassicQuestLog ~= nil ) then
+            QTR_ToggleButton3:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+         end
+         if (ImmersionFrame ~= nil ) then
+            QTR_ToggleButton4:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+            QTR_Immersion_OFF();
+            ImmersionFrame.TalkBox.TextFrame.Text:RepeatTexts();   --reload text
+         end
+         if (isStoryline()) then
+            QTR_ToggleButton5:SetText("Quest ID="..QTR_quest_EN.id.." (EN)");
+            QTR_Storyline_OFF(1);
+         end
+         QuestLogQuestDescription:SetFont(Original_Font2, 13);
+         QuestLogQuestDescription:SetText(QTR_quest_EN.details);
+         QuestInfoDescriptionText:SetFont(Original_Font2, 13);
+         QuestInfoDescriptionText:SetText(QTR_quest_EN.details);
+         QuestInfoObjectivesText:SetFont(Original_Font2, 13);
+         QuestInfoObjectivesText:SetText(QTR_quest_EN.objectives);
+         
+         QuestLogObjectivesText:SetFont(Original_Font2, 13);
+         QuestLogObjectivesText:SetText(QTR_quest_EN.objectives);
+         
+         QuestProgressText:SetFont(Original_Font2, 13);
+         QuestProgressText:SetText(QTR_quest_EN.progress);
+         QuestInfoRewardText:SetFont(Original_Font2, 13);
+         QuestInfoRewardText:SetText(QTR_quest_EN.completion);
+         
+         QuestInfoRewardsFrame.ItemChooseText:SetFont(Original_Font2, 13);
+         QuestInfoRewardsFrame.ItemChooseText:SetText(QTR_quest_EN.itemchoose);
+         QuestInfoRewardsFrame.ItemReceiveText:SetFont(Original_Font2, 13);
+         QuestInfoRewardsFrame.ItemReceiveText:SetText(QTR_quest_EN.itemreceive);
+      end
+   else   
+      if (curr_trans == "0") then
+         if ((ImmersionFrame ~= nil ) and (ImmersionFrame.TalkBox:IsVisible() )) then
+            if (not QTR_wait(0.2,QTR_Immersion_OFF_Static)) then
+               -- Penggantian teks dengan penundaan 0,2 detik
+            end
+         end
+      end
+   end
+end
+
+
+function QTR_delayed3()
+   QTR_ToggleButton4:SetText("Pilih dulu quest");
+   QTR_ToggleButton4:Hide();
+   if (not QTR_wait(1,QTR_delayed4)) then
+   ---
+   end
+end
+
+
+function QTR_delayed4()
+   if (ImmersionFrame.TitleButtons:IsVisible()) then
+      if (ImmersionFrame.TitleButtons.Buttons[1] ~= nil ) then
+         ImmersionFrame.TitleButtons.Buttons[1]:HookScript("OnClick", function() QTR_PrepareDelay(1) end);
+      end
+      if (ImmersionFrame.TitleButtons.Buttons[2] ~= nil ) then
+         ImmersionFrame.TitleButtons.Buttons[2]:HookScript("OnClick", function() QTR_PrepareDelay(1) end);
+      end
+      if (ImmersionFrame.TitleButtons.Buttons[3] ~= nil ) then
+         ImmersionFrame.TitleButtons.Buttons[3]:HookScript("OnClick", function() QTR_PrepareDelay(1) end);
+      end   
+      if (ImmersionFrame.TitleButtons.Buttons[4] ~= nil ) then
+         ImmersionFrame.TitleButtons.Buttons[4]:HookScript("OnClick", function() QTR_PrepareDelay(1) end);
+      end
+      if (ImmersionFrame.TitleButtons.Buttons[5] ~= nil ) then
+         ImmersionFrame.TitleButtons.Buttons[5]:HookScript("OnClick", function() QTR_PrepareDelay(1) end);
+      end
+   end
+   QTR_QuestPrepare('');
+end;      
+
+
+function QTR_PrepareDelay(czas)     
+   if (czas==1) then
+      if (not QTR_wait(1,QTR_PrepareReload)) then
+      ---
+      end
+   end
+   if (czas==3) then
+      if (not QTR_wait(3,QTR_PrepareReload)) then
+      ---
+      end
+   end
+end;      
+
+
+function QTR_PrepareReload()
+   QTR_QuestPrepare('');
+end;      
+
+
+function QTR_Prepare1sek()
+   if (not QTR_wait(0.1,QTR_PrepareReload)) then
+   ---
+   end
+end;      
+
+
+function QTR_Immersion()   
+  ImmersionContentFrame.ObjectivesText:SetFont(QTR_Font2, 14);
+  ImmersionContentFrame.ObjectivesText:SetText(QTR_quest_LG.objectives);
+  ImmersionFrame.TalkBox.NameFrame.Name:SetFont(QTR_Font1, 20);
+  ImmersionFrame.TalkBox.NameFrame.Name:SetText(QTR_quest_LG.title);
+  ImmersionFrame.TalkBox.TextFrame.Text:SetFont(QTR_Font2, 14);
+  if (strlen(QTR_quest_EN.details)>0) then                                   
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_LG.details);
+  elseif (strlen(QTR_quest_EN.completion)>0) then
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_LG.completion);
+  else
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_LG.progress);
+  end
+  QTR_Immersion_Static();        
+end
+
+
+function QTR_Immersion_Static() 
+  ImmersionContentFrame.ObjectivesHeader:SetFont(QTR_Font1, 18);
+  ImmersionContentFrame.ObjectivesHeader:SetText(QTR_Messages.objectives);  
+  ImmersionContentFrame.RewardsFrame.Header:SetFont(QTR_Font1, 18);
+  ImmersionContentFrame.RewardsFrame.Header:SetText(QTR_Messages.rewards);  
+  ImmersionContentFrame.RewardsFrame.ItemChooseText:SetFont(QTR_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.ItemChooseText:SetText(QTR_Messages.itemchoose1); 
+  ImmersionContentFrame.RewardsFrame.ItemReceiveText:SetFont(QTR_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.ItemReceiveText:SetText(QTR_Messages.itemreceiv1); 
+  ImmersionContentFrame.RewardsFrame.XPFrame.ReceiveText:SetFont(QTR_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.XPFrame.ReceiveText:SetText(QTR_Messages.experience);  
+  ImmersionFrame.TalkBox.Elements.Progress.ReqText:SetFont(QTR_Font1, 18);
+  ImmersionFrame.TalkBox.Elements.Progress.ReqText:SetText(QTR_Messages.reqitems);  
+end
+
+
+function QTR_Immersion_OFF()   u
+  ImmersionContentFrame.ObjectivesText:SetFont(Original_Font2, 14);
+  ImmersionContentFrame.ObjectivesText:SetText(QTR_quest_EN.objectives);
+  ImmersionFrame.TalkBox.NameFrame.Name:SetFont(Original_Font1, 20);
+  ImmersionFrame.TalkBox.NameFrame.Name:SetText(QTR_quest_EN.title);
+  ImmersionFrame.TalkBox.TextFrame.Text:SetFont(Original_Font2, 14);
+  if (strlen(QTR_quest_EN.details)>0) then                                    
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_EN.details);
+  elseif (strlen(QTR_quest_EN.progress)>0) then
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_EN.progress);
+  else
+     ImmersionFrame.TalkBox.TextFrame.Text:SetText(QTR_quest_EN.completion);
+  end
+  QTR_Immersion_OFF_Static();       
+end
+
+
+function QTR_Immersion_OFF_Static()
+  ImmersionContentFrame.ObjectivesHeader:SetFont(Original_Font1, 18);
+  ImmersionContentFrame.ObjectivesHeader:SetText(QTR_MessOrig.objectives);  
+  ImmersionContentFrame.RewardsFrame.Header:SetFont(Original_Font1, 18);
+  ImmersionContentFrame.RewardsFrame.Header:SetText(QTR_MessOrig.rewards);  
+  ImmersionContentFrame.RewardsFrame.ItemChooseText:SetFont(Original_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.ItemChooseText:SetText(QTR_MessOrig.itemchoose1); 
+  ImmersionContentFrame.RewardsFrame.ItemReceiveText:SetFont(Original_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.ItemReceiveText:SetText(QTR_MessOrig.itemreceiv1); 
+  ImmersionContentFrame.RewardsFrame.XPFrame.ReceiveText:SetFont(Original_Font2, 13);
+  ImmersionContentFrame.RewardsFrame.XPFrame.ReceiveText:SetText(QTR_MessOrig.experience);  
+  ImmersionFrame.TalkBox.Elements.Progress.ReqText:SetFont(Original_Font1, 18);
+  ImmersionFrame.TalkBox.Elements.Progress.ReqText:SetText(QTR_MessOrig.reqitems);  
+end
+
+
+function QTR_Storyline_Delay()
+   QTR_Storyline(1);
+end
+
+
+function QTR_Storyline_Quest()
+   if (QTR_PS["active"]=="1" and QTR_PS["other3"]=="1" and Storyline_NPCFrameTitle:IsVisible()) then
+      QTR_QuestPrepare('');
+   end
+end
+
+
+function QTR_Storyline_Hide()
+   if (QTR_PS["active"]=="1" and QTR_PS["other3"]=="1") then
+      QTR_ToggleButton5:Hide();
+   end
+end
+
+
+function QTR_Storyline_Objectives()
+   if (QTR_onDebug) then
+      print("QTR_ST: objectives");
+   end
+   if (QTR_PS["active"]=="1" and QTR_PS["other3"]=="1" and QTR_quest_LG.id>0) then
+      local string_ID= tostring(QTR_quest_LG.id);
+      Storyline_NPCFrameObjectivesContent.Title:SetText('Objektif');
+      if (QTR_QuestData[string_ID] ) then
+         Storyline_NPCFrameObjectivesContent.Objectives:SetText(QTR_ExpandUnitInfo(QTR_QuestData[string_ID]["Objectives"]));
+         Storyline_NPCFrameObjectivesContent.Objectives:SetFont(QTR_Font2, 13);
+      end   
+   end
+end
+
+
+function QTR_Storyline_Rewards()
+   if (QTR_onDebug) then
+      print("QTR_ST: rewards");
+   end
+   if (QTR_PS["active"]=="1" and QTR_PS["other3"]=="1") then
+      Storyline_NPCFrameRewards.Content.Title:SetText('Hadiah');
+   end
+end
+
+
+function QTR_Storyline(nr)
+   if (QTR_onDebug) then
+      print('QTR_ST: Kondisi quest '..QTR_quest_LG.id);
+   end
+   if (QTR_PS["transtitle"]=="1") then
+      Storyline_NPCFrameTitle:SetText(QTR_quest_LG.title);
+      Storyline_NPCFrameTitle:SetFont(QTR_Font2, 18);
+   end
+   local string_ID= tostring(QTR_quest_LG.id);
+   local texts = { "" };
+   if ((Storyline_NPCFrameChat.event ~= nil) and (QTR_QuestData[string_ID] ~= nil))then
+      local event = Storyline_NPCFrameChat.event;
+      if (event=="QUEST_DETAIL") then
+     	   texts = { strsplit("\n", QTR_ExpandUnitInfo(QTR_QuestData[string_ID]["Description"])) };
+      end   
+      if (event=="QUEST_PROGRESS") then
+     	   texts = { strsplit("\n", QTR_ExpandUnitInfo(QTR_QuestData[string_ID]["Progress"])) };
+      end   
+      if (event=="QUEST_COMPLETE") then
+     	   texts = { strsplit("\n", QTR_ExpandUnitInfo(QTR_QuestData[string_ID]["Completion"])) };
+      end   
+   end
+   local ileOry = #Storyline_NPCFrameChat.texts;
+   local indeks = 0;
+   for i=1,#texts do
+      if texts[i]:len() > 0 then
+         if (indeks<ileOry) then
+            indeks=indeks+1;
+            Storyline_NPCFrameChat.texts[indeks]=texts[i];
+         end
+      end
+   end
+   Storyline_NPCFrameChatText:SetFont(QTR_Font2, 16);
+   if (nr==1) then      -- Reload text
+      Storyline_NPCFrameObjectivesContent:Hide();
+      Storyline_NPCFrame.chat.currentIndex = 0;
+      Storyline_API.playNext(Storyline_NPCFrameModelsYou);  -- reload
+   end
+end
+
+
+function QTR_Storyline_OFF(nr)
+   if (QTR_onDebug) then
+      print('QTR_SToff: Saya memulihkan quest '..QTR_quest_EN.id);
+   end
+   if (QTR_PS["transtitle"]=="1") then
+      Storyline_NPCFrameTitle:SetText(QTR_quest_EN.title);
+      Storyline_NPCFrameTitle:SetFont(Original_Font2, 18);
+   end
+   local string_ID= tostring(QTR_quest_EN.id);
+   local texts = { "" };
+   if ((Storyline_NPCFrameChat.event ~= nil) and (QTR_QuestData[string_ID] ~= nil))then
+      local event = Storyline_NPCFrameChat.event;
+      if (event=="QUEST_DETAIL") then
+     	   texts = { strsplit("\n", GetQuestText()) };
+      end   
+      if (event=="QUEST_PROGRESS") then
+     	   texts = { strsplit("\n", GetProgressText()) };
+      end   
+      if (event=="QUEST_COMPLETE") then
+     	   texts = { strsplit("\n", GetRewardText()) };
+      end   
+   end
+   local ileOry = #Storyline_NPCFrameChat.texts;
+   local indeks = 0;
+   for i=1,#texts do
+      if texts[i]:len() > 0 then
+         if (indeks<ileOry) then
+            indeks=indeks+1;
+            Storyline_NPCFrameChat.texts[indeks]=texts[i];
+         end
+      end
+   end
+   Storyline_NPCFrameChatText:SetFont(Original_Font2, 16);
+   if (nr==1) then      -- Reload text
+      Storyline_NPCFrameObjectivesContent:Hide();
+      Storyline_NPCFrame.chat.currentIndex = 0;
+      Storyline_API.playNext(Storyline_NPCFrameModelsYou);  -- reload
+   end
+end
+
+
+-- Tandai karakter khusus dalam teks
+function QTR_ExpandUnitInfo(msg)
+   msg = string.gsub(msg, "$n", "$N");
+   msg = string.gsub(msg, "$r", "$R");
+   msg = string.gsub(msg, "$c", "$C");
+   msg = string.gsub(msg, "$b", "$B");
+   msg = string.gsub(msg, "$p", "$P");
+   msg = string.gsub(msg, "$o", "$O");
+   msg = string.gsub(msg, "$g", "$G");
+   msg = string.gsub(msg, "$N", "YOUR_NAME");
+   msg = string.gsub(msg, "$R", "YOUR_RACE");
+   msg = string.gsub(msg, "$C", "YOUR_CLASS");
+   msg = string.gsub(msg, "$B", "NEW_LINE");
+   msg = string.gsub(msg, "$P", "NPC_GENDER");
+   msg = string.gsub(msg, "$O", "OWN_NAME");
+   msg = string.gsub(msg, "$G", "YOUR_GENDER");
+
+   msg = string.gsub(msg, "NEW_LINE", "\n");
+   msg = string.gsub(msg, "YOUR_NAME0", string.upper(QTR_PC["name1"]));
+   msg = string.gsub(msg, "YOUR_NAME1", QTR_PC["name1"]);
+   msg = string.gsub(msg, "YOUR_NAME2", QTR_PC["name2"]);
+   msg = string.gsub(msg, "YOUR_NAME3", QTR_PC["name3"]);
+   msg = string.gsub(msg, "YOUR_NAME4", QTR_PC["name4"]);
+   msg = string.gsub(msg, "YOUR_NAME5", QTR_PC["name5"]);
+   msg = string.gsub(msg, "YOUR_NAME6", QTR_PC["name6"]);
+   msg = string.gsub(msg, "YOUR_NAME7", QTR_PC["name7"]);
+   msg = string.gsub(msg, "YOUR_NAME", QTR_name);
+   
+-- masih menangani YOUR_GENDER(x;y)
+   local nr_1, nr_2, nr_3 = 0;
+   local QTR_forma = "";
+   local nr_poz = string.find(msg, "YOUR_GENDER");    -- Ketika dia tidak menemukannya, itu: nil
+   while (nr_poz and nr_poz>0) do
+      nr_1 = nr_poz + 1;   
+      while (string.sub(msg, nr_1, nr_1) ~= "(") do
+         nr_1 = nr_1 + 1;
+      end
+      if (string.sub(msg, nr_1, nr_1) == "(") then
+         nr_2 =  nr_1 + 1;
+         while (string.sub(msg, nr_2, nr_2) ~= ";") do
+            nr_2 = nr_2 + 1;
+         end
+         if (string.sub(msg, nr_2, nr_2) == ";") then
+            nr_3 = nr_2 + 1;
+            while (string.sub(msg, nr_3, nr_3) ~= ")") do
+               nr_3 = nr_3 + 1;
+            end
+            if (string.sub(msg, nr_3, nr_3) == ")") then
+               if (QTR_sex==3) then        -- bentuk wanita
+                  QTR_forma = string.sub(msg,nr_2+1,nr_3-1);
+               else                        -- pria
+                  QTR_forma = string.sub(msg,nr_1+1,nr_2-1);
+               end
+               msg = string.sub(msg,1,nr_poz-1) .. QTR_forma .. string.sub(msg,nr_3+1);
+            end   
+         end
+      end
+      nr_poz = string.find(msg, "YOUR_GENDER");
+   end
+
+-- masih menangani NPC_GENDER(x;y)
+   local nr_1, nr_2, nr_3 = 0;
+   local QTR_forma = "";
+   local nr_poz = string.find(msg, "NPC_GENDER");    
+   while (nr_poz and nr_poz>0) do
+      nr_1 = nr_poz + 1;   
+      while (string.sub(msg, nr_1, nr_1) ~= "(") do
+         nr_1 = nr_1 + 1;
+      end
+      if (string.sub(msg, nr_1, nr_1) == "(") then
+         nr_2 =  nr_1 + 1;
+         while (string.sub(msg, nr_2, nr_2) ~= ";") do
+            nr_2 = nr_2 + 1;
+         end
+         if (string.sub(msg, nr_2, nr_2) == ";") then
+            nr_3 = nr_2 + 1;
+            while (string.sub(msg, nr_3, nr_3) ~= ")") do
+               nr_3 = nr_3 + 1;
+            end
+            if (string.sub(msg, nr_3, nr_3) == ")") then
+               if (QTR_sex==3) then        
+                  QTR_forma = string.sub(msg,nr_2+1,nr_3-1);
+               else                        
+                  QTR_forma = string.sub(msg,nr_1+1,nr_2-1);
+               end
+               msg = string.sub(msg,1,nr_poz-1) .. QTR_forma .. string.sub(msg,nr_3+1);
+            end   
+         end
+      end
+      nr_poz = string.find(msg, "NPC_GENDER");
+   end
+
+-- masih menangani OWN_NAME(EN;ID)
+   local nr_1, nr_2, nr_3 = 0;
+   local QTR_forma = "";
+   local nr_poz = string.find(msg, "OWN_NAME");    
+   while (nr_poz and nr_poz>0) do
+      nr_1 = nr_poz + 1;   
+      while (string.sub(msg, nr_1, nr_1) ~= "(") do
+         nr_1 = nr_1 + 1;
+      end
+      if (string.sub(msg, nr_1, nr_1) == "(") then
+         nr_2 =  nr_1 + 1;
+         while (string.sub(msg, nr_2, nr_2) ~= ";") do
+            nr_2 = nr_2 + 1;
+         end
+         if (string.sub(msg, nr_2, nr_2) == ";") then
+            nr_3 = nr_2 + 1;
+            while (string.sub(msg, nr_3, nr_3) ~= ")") do
+               nr_3 = nr_3 + 1;
+            end
+            if (string.sub(msg, nr_3, nr_3) == ")") then
+--               if (QTR_PS["ownname"] == "1") then        
+--                  QTR_forma = string.sub(msg,nr_2+1,nr_3-1);
+--               else                                      
+                  QTR_forma = string.sub(msg,nr_1+1,nr_2-1);
+--               end
+--               if ((QTR_PS["ownname_obj"] == "1") and OnObjectives) then       
+--                  QTR_forma = string.sub(msg,nr_2+1,nr_3-1);
+--               end
+               msg = string.sub(msg,1,nr_poz-1) .. QTR_forma .. string.sub(msg,nr_3+1);
+            end   
+         end
+      end
+      nr_poz = string.find(msg, "OWN_NAME");
+   end
+
+   if (QTR_sex==3) then        --  wanita
+      msg = string.gsub(msg, "YOUR_CLASS1", player_class.M2);          
+      msg = string.gsub(msg, "YOUR_CLASS2", player_class.D2);         
+      msg = string.gsub(msg, "YOUR_CLASS3", player_class.C2);          
+      msg = string.gsub(msg, "YOUR_CLASS4", player_class.B2);          
+      msg = string.gsub(msg, "YOUR_CLASS5", player_class.N2);         
+      msg = string.gsub(msg, "YOUR_CLASS6", player_class.K2);          
+      msg = string.gsub(msg, "YOUR_CLASS7", player_class.W2);          
+      msg = string.gsub(msg, "YOUR_RACE1", player_race.M2);            
+      msg = string.gsub(msg, "YOUR_RACE2", player_race.D2);           
+      msg = string.gsub(msg, "YOUR_RACE3", player_race.C2);            
+      msg = string.gsub(msg, "YOUR_RACE4", player_race.B2);            
+      msg = string.gsub(msg, "YOUR_RACE5", player_race.N2);           
+      msg = string.gsub(msg, "YOUR_RACE6", player_race.K2);            
+      msg = string.gsub(msg, "YOUR_RACE7", player_race.W2);            
+      msg = string.gsub(msg, "YOUR_RACE YOUR_CLASS", "YOUR_RACE "..player_class.M2);     
+      msg = string.gsub(msg, "ą YOUR_RACE", "ą "..player_race.N2);             
+      msg = string.gsub(msg, " jesteś YOUR_RACE", " jesteś "..player_race.N2);   
+      msg = string.gsub(msg, "YOUR_RACE", player_race.W2);                        
+      msg = string.gsub(msg, "ą YOUR_CLASS", "ą "..player_class.N2);           
+      msg = string.gsub(msg, "esteś YOUR_CLASS", "esteś "..player_class.N2);     
+      msg = string.gsub(msg, " z Ciebie YOUR_CLASS", " z Ciebie "..player_class.M2);    
+      msg = string.gsub(msg, " kolejny YOUR_CLASS do ", " kolejny "..player_class.M2.." do ");   
+      msg = string.gsub(msg, " taki YOUR_CLASS", " taki "..player_class.M2);      
+      msg = string.gsub(msg, "ako YOUR_CLASS", "ako "..player_class.M2);          
+      msg = string.gsub(msg, " co sprowadza YOUR_CLASS", " co sprowadza "..player_class.B2);     
+      msg = string.gsub(msg, " będę miał YOUR_CLASS", " będę miał "..player_class.B2);  
+      msg = string.gsub(msg, "YOUR_CLASS taki jak ", player_class.B2.." taki jak ");    
+      msg = string.gsub(msg, " jak na YOUR_CLASS", " jak na "..player_class.B2);        
+      msg = string.gsub(msg, "YOUR_CLASS", player_class.W2);                      
+   else                    -- pria
+      msg = string.gsub(msg, "YOUR_CLASS1", player_class.M1);          
+      msg = string.gsub(msg, "YOUR_CLASS2", player_class.D1);         
+      msg = string.gsub(msg, "YOUR_CLASS3", player_class.C1);          
+      msg = string.gsub(msg, "YOUR_CLASS4", player_class.B1);          
+      msg = string.gsub(msg, "YOUR_CLASS5", player_class.N1);         
+      msg = string.gsub(msg, "YOUR_CLASS6", player_class.K1);          
+      msg = string.gsub(msg, "YOUR_CLASS7", player_class.W1);          
+      msg = string.gsub(msg, "YOUR_RACE1", player_race.M1);            
+      msg = string.gsub(msg, "YOUR_RACE2", player_race.D1);           
+      msg = string.gsub(msg, "YOUR_RACE3", player_race.C1);            
+      msg = string.gsub(msg, "YOUR_RACE4", player_race.B1);            
+      msg = string.gsub(msg, "YOUR_RACE5", player_race.N1);           
+      msg = string.gsub(msg, "YOUR_RACE6", player_race.K1);            
+      msg = string.gsub(msg, "YOUR_RACE7", player_race.W1);            
+      msg = string.gsub(msg, "YOUR_RACE YOUR_CLASS", "YOUR_RACE "..player_class.M1);     
+      msg = string.gsub(msg, "ym YOUR_RACE", "ym "..player_race.N1);             
+      msg = string.gsub(msg, " jesteś YOUR_RACE", " jesteś "..player_race.N1);   
+      msg = string.gsub(msg, "YOUR_RACE", player_race.W1);                        
+      msg = string.gsub(msg, "ym YOUR_CLASS", "ym "..player_class.N1);           
+      msg = string.gsub(msg, "esteś YOUR_CLASS", "esteś "..player_class.N1);     
+      msg = string.gsub(msg, " z Ciebie YOUR_CLASS", " z Ciebie "..player_class.M1);    
+      msg = string.gsub(msg, " kolejny YOUR_CLASS do ", " kolejny "..player_class.M1.." do ");   
+      msg = string.gsub(msg, " taki YOUR_CLASS", " taki "..player_class.M1);      
+      msg = string.gsub(msg, "ako YOUR_CLASS", "ako "..player_class.M1);          
+      msg = string.gsub(msg, " co sprowadza YOUR_CLASS", " co sprowadza "..player_class.B1);     
+      msg = string.gsub(msg, " będę miał YOUR_CLASS", " będę miał "..player_class.B1);  
+      msg = string.gsub(msg, "ego YOUR_CLASS", "ego "..player_class.B1);                
+      msg = string.gsub(msg, "YOUR_CLASS taki jak ", player_class.B1.." taki jak ");    
+      msg = string.gsub(msg, " jak na YOUR_CLASS", " jak na "..player_class.B1);        
+      msg = string.gsub(msg, "YOUR_CLASS", player_class.W1);                      
+   end
+   
+   return msg;
+end
+
